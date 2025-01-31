@@ -33,10 +33,22 @@ Create a JSON configuration file with the commands you want to execute. Example 
     }
 ]
 ```
+Additionally, if you do not specify a configuration file, `cchain` will list all available configuration files in the current working directory that start with `cchain_` and have a `.json` extension. You can then select the desired configuration file by entering the corresponding number.
+
+Example:
+```sh
+./cchain
+```
+This will prompt you to select from the available configuration files in the current directory.
 
 Run `cchain` with the path to your configuration file:
 ```sh
-./cchain -c path/to/configurations.json
+./cchain --configurations path/to/configurations.json
+```
+
+To generate a template configuration file, use the `--generate` flag:
+```sh
+./cchain --generate
 ```
 
 ## License
