@@ -1,6 +1,6 @@
 [package]
 name = "cchain"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "A command line chain execution tool"
 authors =  ["Xinyu Bao <baoxinyuworks@163.com>"]
