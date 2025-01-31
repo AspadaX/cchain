@@ -9,3 +9,8 @@ repository = "https://github.com/aspadax/gitars"
 license = "MIT"
 
 [dependencies]
+clap = { version = "4.5.27", features = ["derive"] }
+log = "0.4.25"
+serde = { version = "1.0.217", features = ["derive"] }
+serde_json = "1.0.138"
+simple_logger = "5.0.0"
