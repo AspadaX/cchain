@@ -30,11 +30,18 @@ fn main() {
     // Check if the generate flag is set
     if arguments.generate {
         // Create a template configuration
-        let template = Configuration {
-            command: "example_command".to_string(),
-            arguments: vec!["arg1".to_string(), "arg2".to_string()],
-            retry: 3,
-        };
+        let template = vec![
+            Configuration {
+                command: "example_command".to_string(),
+                arguments: vec!["arg1".to_string(), "arg2".to_string()],
+                retry: 3,
+            },
+            Configuration {
+                command: "another_command".to_string(),
+                arguments: vec!["argA".to_string(), "argB".to_string()],
+                retry: 5,
+            },
+        ];
         // Serialize the template to JSON
         let template_json = serde_json::to_string_pretty(&template).expect("Failed to serialize template");
         // Write the template JSON to a file
