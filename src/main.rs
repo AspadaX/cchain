@@ -127,6 +127,6 @@ fn main() {
         }
 
         // Separation between commands
-        info!("\nFinished executing command: {:?}", configuration.command);
+        info!("\nFinished executing command: {:?} {:?}\n", configuration.command, configuration.arguments);
     }
 }
