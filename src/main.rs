@@ -125,5 +125,8 @@ fn main() {
             error!("\nFailed to execute command: {:?}", configuration.command);
             return;
         }
+
+        // Separation between commands
+        info!("\nFinished executing command: {:?}", configuration.command);
     }
 }
