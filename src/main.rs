@@ -10,7 +10,7 @@ pub struct Arguments {
     
     // generate a configuration template
     #[clap(short, long)]
-    pub generate: Option<bool>,
+    pub generate: bool,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -28,7 +28,7 @@ fn main() {
     let arguments = Arguments::parse();
 
     // Check if the generate flag is set
-    if arguments.generate.unwrap_or(false) {
+    if arguments.generate {
         // Create a template configuration
         let template = Configuration {
             command: "example_command".to_string(),

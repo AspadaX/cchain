@@ -1,0 +1,8 @@
+{
+  "command": "example_command",
+  "arguments": [
+    "arg1",
+    "arg2"
+  ],
+  "retry": 3
+}

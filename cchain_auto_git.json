@@ -6,7 +6,7 @@
   },
   {
     "command": "git",
-    "arguments": ["commit", "-m", "now the program is able to generate a template file and able to let users choose the files under cwd."],
+    "arguments": ["commit", "-m", "bug fixes"],
     "retry": 0
   },
   {
