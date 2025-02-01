@@ -12,7 +12,7 @@
 ## Installation
 To install `cchain`, clone the repository and build it using Cargo:
 ```sh
-git clone https://github.com/yourusername/cchain.git
+git clone https://github.com/aspadax/cchain.git
 cd cchain
 cargo build --release
 ```
@@ -43,7 +43,12 @@ This will prompt you to select from the available configuration files in the cur
 
 Run `cchain` with the path to your configuration file:
 ```sh
-./cchain --configurations path/to/configurations.json
+./cchain --configuration_file path/to/configuration.json
+```
+
+Also, if you would like to pick a command chain in a different folder than the current one, you can use the `--directory` flag:
+```sh
+./cchain --configuration_files path/to/the/directory
 ```
 
 To generate a template configuration file, use the `--generate` flag:

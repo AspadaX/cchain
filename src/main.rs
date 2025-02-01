@@ -31,7 +31,10 @@ fn get_paths(path: &std::path::Path) -> Vec<DirEntry> {
     let entries = std::fs::read_dir(path).expect("Failed to read directory");
     for entry in entries {
         let entry = entry.expect("Failed to read entry");
-        if entry.path().is_file() && entry.path().extension().map_or(false, |ext| ext == "json") {
+        if entry.path().is_file()
+            && entry.path().extension().map_or(false, |ext| ext == "json")
+            && entry.file_name().to_string_lossy().starts_with("cchain_")
+        {
             paths.push(entry);
         }
     }
