@@ -10,6 +10,14 @@
 - Logging of command execution and retries.
 
 ## Installation
+
+### Cargo
+Use Cargo to install `cchain`:
+```sh
+cargo install cchain
+```
+
+### Building from Source
 To install `cchain`, clone the repository and build it using Cargo:
 ```sh
 git clone https://github.com/aspadax/cchain.git
@@ -37,23 +45,23 @@ Additionally, if you do not specify a configuration file, `cchain` will list all
 
 Example:
 ```sh
-./cchain
+cchain
 ```
 This will prompt you to select from the available configuration files in the current directory.
 
 Run `cchain` with the path to your configuration file:
 ```sh
-./cchain --configuration_file path/to/configuration.json
+cchain --configuration_file path/to/configuration.json
 ```
 
 Also, if you would like to pick a command chain in a different folder than the current one, you can use the `--directory` flag:
 ```sh
-./cchain --configuration_files path/to/the/directory
+cchain --configuration_files path/to/the/directory
 ```
 
 To generate a template configuration file, use the `--generate` flag:
 ```sh
-./cchain --generate
+cchain --generate
 ```
 
 ## License

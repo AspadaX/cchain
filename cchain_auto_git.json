@@ -6,7 +6,7 @@
   },
   {
     "command": "git",
-    "arguments": ["commit", "-m", "bug fixes"],
+    "arguments": ["commit", "-m", "update README.md"],
     "retry": 0
   },
   {
