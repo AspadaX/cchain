@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
     use cchain::function::Function;
+    use std::str::FromStr;
 
     #[test]
     fn test_from_str() {
@@ -9,7 +9,10 @@ mod tests {
         let function = Function::from_str(func_str).unwrap();
 
         assert_eq!(function.get_name(), "llm_generate");
-        assert_eq!(function.get_parameters(), &vec!["param1".to_string(), "param2".to_string()]);
+        assert_eq!(
+            function.get_parameters(),
+            &vec!["param1".to_string(), "param2".to_string()]
+        );
     }
 
     #[test]
@@ -31,7 +34,10 @@ mod tests {
     fn test_get_parameters() {
         let function = Function::from_str("test_function('param1', 'param2')").unwrap();
 
-        assert_eq!(function.get_parameters(), &vec!["param1".to_string(), "param2".to_string()]);
+        assert_eq!(
+            function.get_parameters(),
+            &vec!["param1".to_string(), "param2".to_string()]
+        );
     }
 
     #[tokio::test]

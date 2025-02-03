@@ -7,7 +7,7 @@ use std::str::FromStr;
 use anyhow::{Error, Result};
 use clap::Parser;
 use configuration::Configuration;
-use log::{error, info};
+use log::{error, info, warn};
 
 #[derive(Parser)]
 pub struct Arguments {
@@ -59,14 +59,14 @@ pub fn determine_configuration_file(
         }
 
         // List available configuration files for the user to select
-        println!("\nAvailable configuration files:");
+        info!("Available configuration files:");
         for (i, path) in paths.iter().enumerate() {
-            println!("{}: {}", i, path.file_name().to_string_lossy());
+            info!("     {}: {}", i, path.file_name().to_string_lossy());
         }
 
         // Prompt the user to select a configuration file
-        println!(
-            "\nPlease select a configuration file to execute by entering the corresponding number:"
+        info!(
+            "Please select a configuration file to execute by entering the corresponding number:"
         );
         let mut selection = String::new();
         std::io::stdin()
@@ -96,10 +96,7 @@ pub fn execute_command(configuration: &Configuration) {
         && (configuration.get_retry() == &-1 || &attempts < configuration.get_retry())
     {
         attempts += 1;
-        info!(
-            "\nRetrying command: {}, attempt: {}",
-            configuration, attempts
-        );
+        warn!("Retrying command: {}, attempt: {}", configuration, attempts);
         // Spawn the command again as a child process
         let status = command
             .spawn()
@@ -111,7 +108,7 @@ pub fn execute_command(configuration: &Configuration) {
             && configuration.get_retry() != &-1
             && &attempts >= configuration.get_retry()
         {
-            error!("\nFailed to execute command: {}", configuration);
+            error!("Failed to execute command: {}", configuration);
             return;
         }
     }
@@ -120,10 +117,7 @@ pub fn execute_command(configuration: &Configuration) {
     if !status.success() && configuration.get_retry() == &-1 {
         loop {
             attempts += 1;
-            info!(
-                "\nRetrying command: {}, attempt: {}",
-                configuration, attempts
-            );
+            warn!("Retrying command: {}, attempt: {}", configuration, attempts);
             let status = command
                 .spawn()
                 .expect("Failed to execute command")
@@ -137,12 +131,14 @@ pub fn execute_command(configuration: &Configuration) {
 
     // If the command fails and retry is 0, stop the chain
     if !status.success() && configuration.get_retry() == &0 {
-        error!("\nFailed to execute command: {}\n", configuration);
+        error!("Failed to execute command: {}\n", configuration);
         return;
     }
 
     // Separation between commands
-    info!("\nFinished executing command: {}\n", configuration);
+    info!("===============================");
+    info!("Finished executing command: {}", configuration);
+    info!("===============================");
 }
 
 pub fn generate_template() {
@@ -179,43 +175,14 @@ pub async fn execute_argument_function(configuration: &mut Configuration) -> Res
             Err(_) => continue, // If parsing fails, skip to the next argument
         };
 
-        loop {
-            info!(
-                "Detected function, {}, when executing command: {}, executing the function...", 
-                function.get_name(), 
-                configuration
-            );
-            // Execute the function asynchronously and await the result
-            let result: String = function.execute().await?;
-            info!("Function, {}, executed successfully", function.get_name());
-
-            println!("Function executed successfully with result: {}", result);
-            println!("Do you want to proceed with this result? (yes/retry/abort)");
-
-            let mut user_input = String::new();
-            std::io::stdin().read_line(&mut user_input).expect("Failed to read input");
-            let user_input = user_input.trim().to_lowercase();
-
-            match user_input.as_str() {
-                "yes" => {
-                    // Proceed with the result
-                    configuration.revise_argument(index, result);
-                    break;
-                }
-                "retry" => {
-                    // Retry the function execution
-                    continue;
-                }
-                "abort" => {
-                    error!("Execution aborted by the user");
-                    std::process::exit(1);
-                }
-                _ => {
-                    error!("Invalid input, execution aborted");
-                    std::process::exit(1);
-                }
-            }
-        }
+        info!(
+            "Detected function, {}, when executing command: {}, executing the function...",
+            function.get_name(),
+            configuration
+        );
+        // Execute the function asynchronously and await the result
+        let result: String = function.execute().await?;
+        info!("Function, {}, executed successfully", function.get_name());
     }
     // Return the result of the function execution
     Ok(())
@@ -249,13 +216,13 @@ async fn main() -> Result<(), Error> {
     let configurations: Vec<Configuration> = serde_json::from_str(
         &std::fs::read_to_string(&configurations_file).expect("Failed to load configurations"),
     )
-        .expect("Failed to parse configurations");
+    .expect("Failed to parse configurations");
 
     // Iterate over each configuration and execute the commands
     for mut configuration in configurations {
         execute_argument_function(&mut configuration).await?;
         execute_command(&configuration);
     }
-    
+
     Ok(())
 }

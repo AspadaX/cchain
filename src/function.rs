@@ -1,15 +1,15 @@
 use std::str::FromStr;
 
+use anyhow::Ok;
 use async_openai::{
-    config::OpenAIConfig, 
+    config::OpenAIConfig,
     types::{
-        ChatCompletionRequestMessageContentPartTextArgs, 
-        ChatCompletionRequestUserMessageArgs, 
-        CreateChatCompletionRequestArgs, 
-        CreateChatCompletionResponse
-    }, 
-    Client
+        ChatCompletionRequestMessageContentPartTextArgs, ChatCompletionRequestUserMessageArgs,
+        CreateChatCompletionRequestArgs, CreateChatCompletionResponse,
+    },
+    Client,
 };
+use log::info;
 use regex;
 
 pub struct Function {
@@ -24,9 +24,21 @@ impl FromStr for Function {
         let re = regex::Regex::new(r"(\w+)\s*\(\s*'(.*)'\s*,\s*'(.*)'\s*\)")?;
 
         if let Some(caps) = re.captures(s) {
-            let func_name: String = caps.get(1).ok_or_else(|| anyhow::anyhow!("Failed to capture function name"))?.as_str().to_string();
-            let arg1 = caps.get(2).ok_or_else(|| anyhow::anyhow!("Failed to capture first argument"))?.as_str().to_string();
-            let arg2 = caps.get(3).ok_or_else(|| anyhow::anyhow!("Failed to capture second argument"))?.as_str().to_string();
+            let func_name: String = caps
+                .get(1)
+                .ok_or_else(|| anyhow::anyhow!("Failed to capture function name"))?
+                .as_str()
+                .to_string();
+            let arg1 = caps
+                .get(2)
+                .ok_or_else(|| anyhow::anyhow!("Failed to capture first argument"))?
+                .as_str()
+                .to_string();
+            let arg2 = caps
+                .get(3)
+                .ok_or_else(|| anyhow::anyhow!("Failed to capture second argument"))?
+                .as_str()
+                .to_string();
 
             return Ok(Function {
                 name: func_name,
@@ -58,14 +70,12 @@ impl Function {
         let api_base: String = std::env::var("CCHAIN_OPENAI_API_BASE")?;
         let api_key: String = std::env::var("CCHAIN_OPENAI_API_KEY")?;
         let model: String = std::env::var("CCHAIN_OPENAI_MODEL")?;
-        
+
         let llm_configuration: OpenAIConfig = OpenAIConfig::default()
             .with_api_key(api_key)
             .with_api_base(api_base);
-        let client: Client<OpenAIConfig> = async_openai::Client::with_config(
-            llm_configuration
-        );
-        
+        let client: Client<OpenAIConfig> = async_openai::Client::with_config(llm_configuration);
+
         // execute the second parameter in the terminal and then get the output
         let command_output: String = if self.parameters.len() > 1 {
             let parts: Vec<&str> = self.parameters[1].split_whitespace().collect();
@@ -75,7 +85,8 @@ impl Function {
                 .await
                 .expect("Failed to execute command");
 
-            if !output.status.success() { // Check if the command failed
+            if !output.status.success() {
+                // Check if the command failed
                 let error_message = if !output.stderr.is_empty() {
                     String::from_utf8_lossy(&output.stderr).to_string()
                 } else {
@@ -83,35 +94,63 @@ impl Function {
                 };
                 return Err(anyhow::anyhow!("Command failed: {}", error_message));
             }
-            
+
             String::from_utf8_lossy(&output.stdout).to_string()
         } else {
             String::new()
         };
-        
+
         let request = CreateChatCompletionRequestArgs::default()
             .model(model)
             .messages(vec![ChatCompletionRequestUserMessageArgs::default()
                 .content(vec![
                     ChatCompletionRequestMessageContentPartTextArgs::default()
-                        .text(
-                            format!(
-                                "{}\n{}\n", 
-                                self.parameters[0], command_output
-                            )
-                        )
+                        .text(format!("{}\n{}\n", self.parameters[0], command_output))
                         .build()?
-                        .into()
+                        .into(),
                 ])
                 .build()?
                 .into()])
             .build()?;
 
-        let response: CreateChatCompletionResponse = client
-            .chat()
-            .create(request)
-            .await?;
-        
-        Ok(response.choices[0].clone().message.content.unwrap())
+        let mut result = String::new();
+
+        loop {
+            let response: CreateChatCompletionResponse =
+                client.chat().create(request.clone()).await?;
+
+            info!(
+                "Function executed successfully with result: {}",
+                response.choices[0].clone().message.content.unwrap()
+            );
+
+            info!("Do you want to proceed with this result? (yes/retry/abort)");
+
+            let mut user_input = String::new();
+            std::io::stdin()
+                .read_line(&mut user_input)
+                .expect("Failed to read input");
+            let user_input = user_input.trim().to_lowercase();
+
+            match user_input.as_str() {
+                "yes" => {
+                    // Proceed with the result
+                    result = response.choices[0].clone().message.content.unwrap();
+                    break;
+                }
+                "retry" => {
+                    // Retry the function execution
+                    continue;
+                }
+                "abort" => {
+                    anyhow::bail!("Execution aborted by the user");
+                }
+                _ => {
+                    info!("Invalid input, please enter 'yes', 'retry', or 'abort'.");
+                }
+            }
+        }
+
+        return Ok(result);
     }
 }

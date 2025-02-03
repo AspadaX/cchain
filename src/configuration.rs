@@ -29,7 +29,7 @@ impl Configuration {
     pub fn get_retry(&self) -> &i32 {
         &self.retry
     }
-    
+
     pub fn revise_argument(&mut self, argument_index: usize, new_argument: String) {
         self.arguments[argument_index] = new_argument;
     }
