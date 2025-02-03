@@ -66,6 +66,15 @@ impl Function {
             llm_configuration
         );
         
+        // execute the second parameter in the terminal and then get the output
+        let output = std::process::Command::new("sh")
+            .arg("-c")
+            .arg(&self.parameters[1])
+            .output()
+            .expect("Failed to execute command");
+
+        let command_output: String = String::from_utf8_lossy(&output.stdout).to_string();
+        
         let request = CreateChatCompletionRequestArgs::default()
             .model(model)
             .messages(vec![ChatCompletionRequestUserMessageArgs::default()
@@ -74,7 +83,7 @@ impl Function {
                         .text(
                             format!(
                                 "{}\n{}\n", 
-                                self.parameters[0], self.parameters[1]
+                                self.parameters[1], command_output
                             )
                         )
                         .build()?

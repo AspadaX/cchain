@@ -1,13 +1,14 @@
 # cchain
 
 ## Overview
-`cchain` is a command line tool designed to execute a series of commands based on a configuration file. It supports retrying commands if they fail, with a specified number of attempts.
+`cchain` is a command line tool designed to execute a series of commands based on a configuration file. It supports retrying commands if they fail, with a specified number of attempts. Additionally, `cchain` can generate command inputs using a language model (LLM) based on specified functions.
 
 ## Features
 - Execute commands with specified arguments.
 - Retry commands on failure with configurable retry limits.
 - Simple configuration using JSON files.
 - Logging of command execution and retries.
+- Generate command inputs dynamically using LLM functions.
 
 ## Installation
 
@@ -63,6 +64,32 @@ To generate a template configuration file, use the `--generate` flag:
 ```sh
 cchain --generate
 ```
+
+### Using Functions with LLM
+You can specify functions in your configuration file that will generate command inputs dynamically using a language model. Example configuration with a function:
+```json
+[
+    {
+        "command": "echo",
+        "arguments": ["Hello, world!"],
+        "retry": 3
+    },
+    {
+        "command": "git",
+        "arguments": ["commit", "-m", "llm_generate('git --no-pager diff', 'generate a commit message')"],
+        "retry": 1
+    }
+]
+```
+In this example, the `llm_generate` function will use the specified arguments to generate a git commit message by prompting the LLM with `git --no-pager diff`.
+
+You can configure the LLM by setting the following environment variables:
+```sh
+export CCHAIN_OPENAI_API_BASE="http://localhost:11434/v1"
+export CCHAIN_OPENAI_API_KEY="test_api_key"
+export CCHAIN_OPENAI_MODEL="mistral"
+```
+Here in the example, we are using a locally hosted Ollama model. 
 
 ## License
 This project is licensed under the MIT License.
