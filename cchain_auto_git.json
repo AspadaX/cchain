@@ -6,7 +6,7 @@
   },
   {
     "command": "git",
-    "arguments": ["commit", "-m", "llm_generate('git --no-pager diff', 'generate a git commit message')"],
+    "arguments": ["commit", "-m", "llm_generate('generate a git commit message', 'git --no-pager diff --staged')"],
     "retry": 0
   },
   {

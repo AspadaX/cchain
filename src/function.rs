@@ -67,13 +67,27 @@ impl Function {
         );
         
         // execute the second parameter in the terminal and then get the output
-        let output = std::process::Command::new("sh")
-            .arg("-c")
-            .arg(&self.parameters[1])
-            .output()
-            .expect("Failed to execute command");
+        let command_output: String = if self.parameters.len() > 1 {
+            let parts: Vec<&str> = self.parameters[1].split_whitespace().collect();
+            let output = tokio::process::Command::new(parts[0])
+                .args(&parts[1..])
+                .output()
+                .await
+                .expect("Failed to execute command");
 
-        let command_output: String = String::from_utf8_lossy(&output.stdout).to_string();
+            if !output.status.success() { // Check if the command failed
+                let error_message = if !output.stderr.is_empty() {
+                    String::from_utf8_lossy(&output.stderr).to_string()
+                } else {
+                    format!("Command exited with status: {}", output.status)
+                };
+                return Err(anyhow::anyhow!("Command failed: {}", error_message));
+            }
+            
+            String::from_utf8_lossy(&output.stdout).to_string()
+        } else {
+            String::new()
+        };
         
         let request = CreateChatCompletionRequestArgs::default()
             .model(model)
@@ -83,7 +97,7 @@ impl Function {
                         .text(
                             format!(
                                 "{}\n{}\n", 
-                                self.parameters[1], command_output
+                                self.parameters[0], command_output
                             )
                         )
                         .build()?

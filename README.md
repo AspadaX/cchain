@@ -76,7 +76,7 @@ You can specify functions in your configuration file that will generate command 
     },
     {
         "command": "git",
-        "arguments": ["commit", "-m", "llm_generate('git --no-pager diff', 'generate a commit message')"],
+        "arguments": ["commit", "-m", "llm_generate('generate a commit message', 'git --no-pager diff')"],
         "retry": 1
     }
 ]
