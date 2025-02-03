@@ -6,7 +6,7 @@
   },
   {
     "command": "git",
-    "arguments": ["commit", "-m", "update README.md"],
+    "arguments": ["commit", "-m", "llm_generate('git --no-pager diff', 'generate a git commit message')"],
     "retry": 0
   },
   {

@@ -1,8 +1,14 @@
-{
-  "command": "example_command",
-  "arguments": [
-    "arg1",
-    "arg2"
-  ],
-  "retry": 3
-}
+[
+  {
+    "command": "ls",
+    "arguments": [
+      "-a"
+    ],
+    "retry": 1
+  },
+  {
+    "command": "history",
+    "arguments": [],
+    "retry": 1
+  }
+]
