@@ -180,8 +180,10 @@ pub async fn execute_argument_function(configuration: &mut Configuration) -> Res
             function.get_name(),
             configuration
         );
+        
         // Execute the function asynchronously and await the result
         let result: String = function.execute().await?;
+        configuration.revise_argument(index, result);
         info!("Function, {}, executed successfully", function.get_name());
     }
     // Return the result of the function execution
