@@ -117,7 +117,14 @@ impl Function {
 
         loop {
             let response: CreateChatCompletionResponse =
-                client.chat().create(request.clone()).await?;
+                match client.chat().create(request.clone()).await {
+                    std::result::Result::Ok(
+                        response
+                    ) => response,
+                    Err(e) => {
+                        anyhow::bail!("Failed to execute function: {}", e);
+                    }
+                };
 
             info!(
                 "Function executed successfully with result: {}",

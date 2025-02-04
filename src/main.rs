@@ -1,224 +1,126 @@
+mod bookmark;
+mod command;
 mod configuration;
 mod function;
-
-use std::fs::DirEntry;
-use std::str::FromStr;
+mod utility;
 
 use anyhow::{Error, Result};
+use bookmark::Bookmark;
 use clap::Parser;
+use command::Arguments;
 use configuration::Configuration;
-use log::{error, info, warn};
-
-#[derive(Parser)]
-pub struct Arguments {
-    // path to the command line chain configuration file
-    #[clap(short, long)]
-    pub configuration_file: Option<String>,
-
-    // path to the directory containing the command line chain configuration files
-    #[clap(short = 'd', long)]
-    pub configuration_files: Option<String>,
-
-    // generate a configuration template
-    #[clap(short, long)]
-    pub generate: bool,
-}
-
-fn get_paths(path: &std::path::Path) -> Vec<DirEntry> {
-    let mut paths: Vec<DirEntry> = Vec::new();
-    let entries = std::fs::read_dir(path).expect("Failed to read directory");
-    for entry in entries {
-        let entry = entry.expect("Failed to read entry");
-        if entry.path().is_file()
-            && entry.path().extension().map_or(false, |ext| ext == "json")
-            && entry.file_name().to_string_lossy().starts_with("cchain_")
-        {
-            paths.push(entry);
-        }
-    }
-    paths
-}
-
-pub fn determine_configuration_file(
-    path_to_configurations: Option<&std::path::Path>,
-    arguments: &Arguments,
-) -> String {
-    let paths: Vec<DirEntry> = if let Some(path) = path_to_configurations {
-        get_paths(path)
-    } else {
-        get_paths(std::path::Path::new("."))
-    };
-
-    if let Some(config_file) = &arguments.configuration_file {
-        config_file.clone()
-    } else {
-        // If no configuration files are found, log an error and return
-        if paths.is_empty() {
-            error!("No configuration files found starting with 'cchain_'");
-            std::process::exit(1);
-        }
-
-        // List available configuration files for the user to select
-        info!("Available configuration files:");
-        for (i, path) in paths.iter().enumerate() {
-            info!("     {}: {}", i, path.file_name().to_string_lossy());
-        }
-
-        // Prompt the user to select a configuration file
-        info!(
-            "Please select a configuration file to execute by entering the corresponding number:"
-        );
-        let mut selection = String::new();
-        std::io::stdin()
-            .read_line(&mut selection)
-            .expect("Failed to read input");
-        let index: usize = selection.trim().parse().expect("Invalid selection");
-
-        // Return the selected configuration file path
-        paths[index].path().to_string_lossy().to_string()
-    }
-}
-
-pub fn execute_command(configuration: &Configuration) {
-    // Create a new command based on the configuration
-    let mut command = std::process::Command::new(configuration.get_command());
-    // Add the arguments to the command
-    command.args(configuration.get_arguments());
-
-    // Spawn the command as a child process
-    let mut child = command.spawn().expect("Failed to execute command");
-    // Wait for the child process to finish
-    let status = child.wait().expect("Failed to wait on child");
-
-    // If the command failed and retry is enabled, try to execute it again
-    let mut attempts = 0;
-    while !status.success()
-        && (configuration.get_retry() == &-1 || &attempts < configuration.get_retry())
-    {
-        attempts += 1;
-        warn!("Retrying command: {}, attempt: {}", configuration, attempts);
-        // Spawn the command again as a child process
-        let status = command
-            .spawn()
-            .expect("Failed to execute command")
-            .wait()
-            .expect("Failed to wait on child");
-        // If the command fails again and retry limit is reached, print an error message and stop the chain
-        if !status.success()
-            && configuration.get_retry() != &-1
-            && &attempts >= configuration.get_retry()
-        {
-            error!("Failed to execute command: {}", configuration);
-            return;
-        }
-    }
-
-    // If the command fails and retry is -1, keep retrying indefinitely
-    if !status.success() && configuration.get_retry() == &-1 {
-        loop {
-            attempts += 1;
-            warn!("Retrying command: {}, attempt: {}", configuration, attempts);
-            let status = command
-                .spawn()
-                .expect("Failed to execute command")
-                .wait()
-                .expect("Failed to wait on child");
-            if status.success() {
-                break;
-            }
-        }
-    }
-
-    // If the command fails and retry is 0, stop the chain
-    if !status.success() && configuration.get_retry() == &0 {
-        error!("Failed to execute command: {}\n", configuration);
-        return;
-    }
-
-    // Separation between commands
-    info!("===============================");
-    info!("Finished executing command: {}", configuration);
-    info!("===============================");
-}
-
-pub fn generate_template() {
-    // Create a template configuration
-    let template = vec![
-        Configuration::new(
-            "example_command".to_string(),
-            vec!["arg1".to_string(), "arg2".to_string()],
-            3,
-        ),
-        Configuration::new(
-            "another_command".to_string(),
-            vec!["argA".to_string(), "argB".to_string()],
-            5,
-        ),
-    ];
-    // Serialize the template to JSON
-    let template_json =
-        serde_json::to_string_pretty(&template).expect("Failed to serialize template");
-    // Write the template JSON to a file
-    std::fs::write("cchain_template.json", template_json).expect("Failed to write template file");
-    info!("Template configuration file generated: cchain_template.json");
-}
-
-pub async fn execute_argument_function(configuration: &mut Configuration) -> Result<(), Error> {
-    // Iterate over each argument in the configuration
-    for index in 0..configuration.get_arguments().len() {
-        // Clone the current argument
-        let argument: String = configuration.get_arguments()[index].clone();
-
-        // Attempt to parse the argument as a function
-        let function: function::Function = match function::Function::from_str(&argument) {
-            Ok(f) => f,
-            Err(_) => continue, // If parsing fails, skip to the next argument
-        };
-
-        info!(
-            "Detected function, {}, when executing command: {}, executing the function...",
-            function.get_name(),
-            configuration
-        );
-        
-        // Execute the function asynchronously and await the result
-        let result: String = function.execute().await?;
-        configuration.revise_argument(index, result);
-        info!("Function, {}, executed successfully", function.get_name());
-    }
-    // Return the result of the function execution
-    Ok(())
-}
+use log::{error, info};
+use utility::{
+    configuration_selection, execute_argument_function, execute_command, generate_template,
+    resolve_cchain_configuration_filepaths,
+};
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     // Setup a logger
-    simple_logger::SimpleLogger::new().env().init().unwrap();
+    simple_logger::SimpleLogger::new()
+        .env()
+        .with_level(log::LevelFilter::Info)
+        .init()
+        .unwrap();
 
     // Parse command line arguments
-    let arguments = Arguments::parse();
+    let mut arguments = Arguments::parse();
 
-    // Check if the generate flag is set
+    // Instantiate the bookmark
+    let mut bookmark: Bookmark = bookmark::Bookmark::from_file();
+
+    // If `configuration_files` is set, get the file paths first.
+    let configuration_filepaths: Option<Vec<String>> =
+        if let Some(files_path) = &arguments.configuration_files {
+            // Resolve the file paths from the provided directory
+            match resolve_cchain_configuration_filepaths(std::path::Path::new(files_path)) {
+                Ok(filepaths) => Some(filepaths),
+                Err(e) => {
+                    error!("{}", e);
+                    std::process::exit(1);
+                }
+            }
+        } else {
+            None
+        };
+
+    // Check if the generate flag is set, and if so, generate a template configuration file
     if arguments.generate {
         generate_template();
         return Ok(());
     }
 
-    // Determine the configuration file to use
-    let configurations_file: String;
-    if let Some(configurations) = &arguments.configuration_files {
-        let path = std::path::Path::new(configurations);
-        configurations_file = determine_configuration_file(Some(path), &arguments);
-    } else {
-        configurations_file =
-            determine_configuration_file(Some(std::path::Path::new(".")), &arguments);
+    // If neither configuration_file nor configuration_files is set, prompt the user to select from bookmarked configurations
+    if arguments.configuration_file.is_none() && arguments.configuration_files.is_none() {
+        let bookmarked_configuration_filepaths = bookmark.get_bookmarked_configurations();
+        arguments.configuration_file = Some(configuration_selection(
+            bookmarked_configuration_filepaths.to_vec(),
+        ));
     }
+
+    if arguments.delete_bookmark {
+        let bookmarked_configuration_filepaths = bookmark.get_bookmarked_configurations();
+        let selected_configuration =
+            configuration_selection(bookmarked_configuration_filepaths.to_vec());
+        bookmark.unbookmark_configuration_by_path(
+            &selected_configuration
+        )?;
+        bookmark.save();
+        return Ok(());
+    }
+
+    // Check if the bookmark flag is set, and if so, register the filepath to the bookmark.
+    // We first check if the configuration_file or configuration_files flag is set,
+    // and an error will be thrown if both are set.
+    if arguments.bookmark {
+        // Ensure that both configuration_file and configuration_files flags are not set simultaneously
+        if arguments.configuration_file.is_some() && arguments.configuration_files.is_some() {
+            error!("Cannot set both configuration_file and configuration_files flags");
+            return Err(Error::msg(
+                "Cannot set both configuration_file and configuration_files flags",
+            ));
+        }
+
+        // Register the single configuration file path to the bookmark if configuration_file is set
+        if let Some(filepath) = &arguments.configuration_file {
+            info!(
+                "Registering single configuration file path to the bookmark: {}",
+                filepath
+            );
+            bookmark.bookmark_configuration(filepath.clone())?;
+        }
+        // Register multiple configuration file paths to the bookmark if configuration_files is set
+        else if let Some(filepaths) = configuration_filepaths {
+            info!("Registering multiple configuration file paths to the bookmark");
+            for filepath in filepaths {
+                info!("Registering configuration file path: {}", filepath);
+                bookmark.bookmark_configuration(filepath)?;
+            }
+        }
+
+        info!("Bookmark registration is done.");
+        bookmark.save();
+        return Ok(());
+    }
+
+    // Prompt the user for selecting a configuration file to execute,
+    // if any.
+    let configurations_file: String = if let Some(filepath) = arguments.configuration_file {
+        filepath
+    } else {
+        if let Some(filepaths) = configuration_filepaths {
+            configuration_selection(filepaths)
+        } else {
+            error!("No configuration file or file paths provided");
+            std::process::exit(1);
+        }
+    };
 
     // Load and parse the configuration file
     let configurations: Vec<Configuration> = serde_json::from_str(
         &std::fs::read_to_string(&configurations_file).expect("Failed to load configurations"),
-    )
-    .expect("Failed to parse configurations");
+    )?;
 
     // Iterate over each configuration and execute the commands
     for mut configuration in configurations {
