@@ -47,7 +47,7 @@ pub fn configuration_selection(paths: Vec<String>) -> String {
     }
 
     // Prompt the user to select a configuration file
-    info!("Please select a configuration file to execute by entering the corresponding number:");
+    info!("Please select a configuration file by entering the corresponding number:");
     let mut selection = String::new();
     std::io::stdin()
         .read_line(&mut selection)

@@ -51,23 +51,35 @@ async fn main() -> Result<(), Error> {
         return Ok(());
     }
 
+    if arguments.delete_bookmark {
+        let bookmarked_configuration_filepaths: &Vec<String> = bookmark
+            .get_bookmarked_configurations();
+        
+        let selected_configuration: String =
+            configuration_selection(
+                bookmarked_configuration_filepaths.to_vec()
+            );
+        
+        bookmark.unbookmark_configuration_by_path(
+            &selected_configuration
+        )?;
+        
+        bookmark.save();
+        
+        info!(
+            "Bookmark at {} is removed from the collection.",
+            selected_configuration
+        );
+        
+        return Ok(());
+    }
+    
     // If neither configuration_file nor configuration_files is set, prompt the user to select from bookmarked configurations
     if arguments.configuration_file.is_none() && arguments.configuration_files.is_none() {
         let bookmarked_configuration_filepaths = bookmark.get_bookmarked_configurations();
         arguments.configuration_file = Some(configuration_selection(
             bookmarked_configuration_filepaths.to_vec(),
         ));
-    }
-
-    if arguments.delete_bookmark {
-        let bookmarked_configuration_filepaths = bookmark.get_bookmarked_configurations();
-        let selected_configuration =
-            configuration_selection(bookmarked_configuration_filepaths.to_vec());
-        bookmark.unbookmark_configuration_by_path(
-            &selected_configuration
-        )?;
-        bookmark.save();
-        return Ok(());
     }
 
     // Check if the bookmark flag is set, and if so, register the filepath to the bookmark.

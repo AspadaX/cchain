@@ -9,6 +9,7 @@
 - Simple configuration using JSON files.
 - Logging of command execution and retries.
 - Generate command inputs dynamically using LLM functions.
+- Bookmark frequently used command chains for quick access.
 
 ## Installation
 
@@ -89,7 +90,21 @@ export CCHAIN_OPENAI_API_BASE="http://localhost:11434/v1"
 export CCHAIN_OPENAI_API_KEY="test_api_key"
 export CCHAIN_OPENAI_MODEL="mistral"
 ```
-Here in the example, we are using a locally hosted Ollama model. 
+Here in the example, we are using a locally hosted Ollama model.
+
+### Bookmarking Command Chains
+You can bookmark frequently used command chains for quick access. To bookmark a command chain, use the `--bookmark` flag followed by a name for the bookmark:
+```sh
+cchain --configuration_file path/to/configuration.json --bookmark
+```
+Or, you can bookmark all configurations under a given directory.
+```sh
+cchain --configuration_files path/to/the/directory --bookmark
+```
+To delete a bookmark, use the following command and it will prompt you to select the bookmark to delete:
+```sh
+cchain -r
+```
 
 ## License
 This project is licensed under the MIT License.
