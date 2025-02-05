@@ -29,6 +29,12 @@ async fn main() -> Result<(), Error> {
 
     // Instantiate the bookmark
     let mut bookmark: Bookmark = bookmark::Bookmark::from_file();
+    // Convert the relative path into absolute for configuration_file
+    if let Some(path) = arguments.configuration_file {
+        arguments.configuration_file = Some(canonicalize(path)?
+            .to_string_lossy()
+            .to_string());
+    }
 
     // If `configuration_files` is set, get the file paths first.
     let configuration_filepaths: Option<Vec<String>> =
