@@ -1,3 +1,4 @@
+use std::fs::canonicalize;
 use std::fs::DirEntry;
 use std::str::FromStr;
 
