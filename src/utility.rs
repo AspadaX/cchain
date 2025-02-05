@@ -209,7 +209,9 @@ pub fn resolve_cchain_configuration_filepaths(
     let paths = get_paths(path);
 
     for entry in paths {
-        let path_str = entry.path().to_string_lossy().to_string();
+        let path_str = canonicalize(entry.path())?
+            .to_string_lossy()
+            .to_string();
         json_paths.push(path_str);
     }
 
