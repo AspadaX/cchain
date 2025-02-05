@@ -4,6 +4,8 @@ mod configuration;
 mod function;
 mod utility;
 
+use std::fs::canonicalize;
+
 use anyhow::{Error, Result};
 use bookmark::Bookmark;
 use clap::Parser;
