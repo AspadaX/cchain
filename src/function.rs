@@ -68,19 +68,19 @@ impl Function {
         }
     }
 
-    fn inline_command(&self) -> Result<String, anyhow::Error> {
-        let command: Configuration = match Configuration::from_str(&self.parameters[0]) {
-            Ok(result) => result,
-            Err(error) => {
-                error!("{}", error.to_string());
-                return Err(anyhow!(error))
-            }
-        };
+    // fn inline_command(&self) -> Result<String, anyhow::Error> {
+    //     let command: Configuration = match Configuration::from_str(&self.parameters[0]) {
+    //         Ok(result) => result,
+    //         Err(error) => {
+    //             error!("{}", error.to_string());
+    //             return Err(anyhow!(error))
+    //         }
+    //     };
 
-        Ok(
-            execute
-        )
-    }
+    //     Ok(
+    //         execute
+    //     )
+    // }
 
     async fn llm_generate(&self) -> Result<String, anyhow::Error> {
         let api_base: String = std::env::var("CCHAIN_OPENAI_API_BASE")?;
