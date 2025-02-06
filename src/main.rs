@@ -11,7 +11,7 @@ use bookmark::Bookmark;
 use clap::Parser;
 use command::Arguments;
 use configuration::Configuration;
-use log::{error, info};
+use log::{error, info, warn};
 use utility::{
     configuration_selection, execute_argument_function, execute_command, generate_template,
     resolve_cchain_configuration_filepaths,
@@ -115,7 +115,13 @@ async fn main() -> Result<(), Error> {
             info!("Registering multiple configuration file paths to the bookmark");
             for filepath in filepaths {
                 info!("Registering configuration file path: {}", filepath);
-                bookmark.bookmark_configuration(filepath)?;
+                match bookmark.bookmark_configuration(filepath.clone()) {
+                    Ok(_) => continue,
+                    Err(error) => {
+                        warn!("{}, skipped bookmarking.", error.to_string());
+                        continue;
+                    }
+                };
             }
         }
 
