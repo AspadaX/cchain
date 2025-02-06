@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use anyhow::Ok;
+use anyhow::anyhow;
 use async_openai::{
     config::OpenAIConfig,
     types::{
@@ -9,8 +9,11 @@ use async_openai::{
     },
     Client,
 };
-use log::info;
+use log::{error, info};
 use regex;
+
+use crate::configuration::Configuration;
+use utility::execute_command;
 
 pub struct Function {
     name: String,
@@ -64,6 +67,20 @@ impl Function {
             "llm_generate" => self.llm_generate().await,
             _ => Err(anyhow::anyhow!("Function not found")),
         }
+    }
+
+    fn inline_command(&self) -> Result<String, anyhow::Error> {
+        let command: Configuration = match Configuration::from_str(&self.parameters[0]) {
+            Ok(result) => result,
+            Err(error) => {
+                error!("{}", error.to_string());
+                return Err(anyhow!(error))
+            }
+        };
+
+        Ok(
+            execute
+        )
     }
 
     async fn llm_generate(&self) -> Result<String, anyhow::Error> {

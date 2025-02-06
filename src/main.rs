@@ -114,9 +114,11 @@ async fn main() -> Result<(), Error> {
         else if let Some(filepaths) = configuration_filepaths {
             info!("Registering multiple configuration file paths to the bookmark");
             for filepath in filepaths {
-                info!("Registering configuration file path: {}", filepath);
                 match bookmark.bookmark_configuration(filepath.clone()) {
-                    Ok(_) => continue,
+                    Ok(_) => {
+                        info!("{} is registered successfully.", filepath);
+                        continue
+                    },
                     Err(error) => {
                         warn!("{}, skipped bookmarking.", error.to_string());
                         continue;

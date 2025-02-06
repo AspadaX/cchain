@@ -7,7 +7,6 @@ use log::{error, info, warn};
 
 use crate::configuration::Configuration;
 use crate::function;
-use crate::Arguments;
 
 fn get_paths(path: &std::path::Path) -> Vec<DirEntry> {
     let mut paths: Vec<DirEntry> = Vec::new();
