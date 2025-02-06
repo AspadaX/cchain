@@ -13,7 +13,6 @@ use log::{error, info};
 use regex;
 
 use crate::configuration::Configuration;
-use utility::execute_command;
 
 pub struct Function {
     name: String,
