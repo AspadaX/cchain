@@ -156,6 +156,7 @@ pub fn resolve_cchain_configuration_filepaths(
 }
 
 pub enum ExecutionType {
+    Chain,
     Program,
     Function
 }
@@ -163,6 +164,7 @@ pub enum ExecutionType {
 impl std::fmt::Display for ExecutionType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            ExecutionType::Chain => f.write_str("Chain"),
             ExecutionType::Program => f.write_str("Program"),
             ExecutionType::Function => f.write_str("Function")
         }
@@ -176,5 +178,5 @@ where
 {
     fn get_execution_type(&self) -> &ExecutionType;
 
-    fn execute(&self) -> Result<(), Error>;
+    async fn execute(&mut self) -> Result<(), Error>;
 }

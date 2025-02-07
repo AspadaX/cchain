@@ -1,18 +1,12 @@
-mod bookmark;
-mod command;
-mod program;
-mod function;
-mod utility;
-
 use std::fs::canonicalize;
 
 use anyhow::{Error, Result};
-use bookmark::Bookmark;
+use cchain::{bookmark::Bookmark, chain::Chain};
 use clap::Parser;
-use command::Arguments;
-use program::Program;
+use cchain::command::Arguments;
+use cchain::program::Program;
 use log::{error, info, warn};
-use utility::{
+use cchain::utility::{
     configuration_selection, execute_argument_function, generate_template,
     resolve_cchain_configuration_filepaths, Execution,
 };
@@ -30,7 +24,7 @@ async fn main() -> Result<(), Error> {
     let mut arguments = Arguments::parse();
 
     // Instantiate the bookmark
-    let mut bookmark: Bookmark = bookmark::Bookmark::from_file();
+    let mut bookmark: Bookmark = Bookmark::from_file();
     // Convert the relative path into absolute for configuration_file
     if let Some(path) = arguments.configuration_file {
         arguments.configuration_file = Some(canonicalize(path)?
@@ -146,16 +140,14 @@ async fn main() -> Result<(), Error> {
     };
 
     // Load and parse the configuration file
-    let programs: Vec<Program> = serde_json::from_str(
-        &std::fs::read_to_string(&configurations_file)
+    let mut chain: Chain = Chain::from_file(
+        &tokio::fs::read_to_string(&configurations_file)
+            .await
             .expect("Failed to load configurations"),
     )?;
 
     // Iterate over each configuration and execute the commands
-    for mut program in programs {
-        execute_argument_function(&mut program).await?;
-        program.execute()?;
-    }
+    chain.execute().await?;
 
     Ok(())
 }

@@ -9,7 +9,7 @@ use crate::utility::{Execution, ExecutionType};
 pub struct Program {
     command: String,
     arguments: Vec<String>,
-    environment_variables_override: HashMap<String, String>,
+    environment_variables_override: Option<HashMap<String, String>>,
     retry: i32
 }
 
@@ -17,7 +17,7 @@ impl Program {
     pub fn new(
         command: String, 
         arguments: Vec<String>, 
-        environment_variables_override: HashMap<String, String>, 
+        environment_variables_override: Option<HashMap<String, String>>, 
         retry: i32
     ) -> Self {
         Program {
@@ -43,6 +43,29 @@ impl Program {
     pub fn get_retry(&self) -> &i32 {
         &self.retry
     }
+
+    pub fn get_process_command(&self) -> tokio::process::Command {
+        let command = if cfg!(
+            any(target_os = "linux", target_os = "macos")
+        ) {
+            // On Unix systems, use 'sh' to execute the command
+            let mut cmd = tokio::process::Command::new("sh");
+            let command_line: String = format!(
+                "{} {}", self.get_command(), self.get_arguments().join(" ")
+            );
+            cmd.arg("-c").arg(command_line);
+            cmd
+        } else {
+            // On non-Unix systems, execute the command directly
+            let mut cmd = tokio::process::Command::new(
+                self.get_command()
+            );
+            cmd.args(self.get_arguments());
+            cmd
+        };
+
+        command
+    }
 }
 
 impl std::fmt::Display for Program {
@@ -67,7 +90,7 @@ impl FromStr for Program {
             Program::new(
                 command, 
                 arguments, 
-                HashMap::new(),
+                Some(HashMap::new()),
                 0
             )
         )
@@ -79,20 +102,16 @@ impl Execution for Program {
         &ExecutionType::Program
     }
 
-    fn execute(&self) -> anyhow::Result<(), anyhow::Error> {
-        // Create a new command based on the configuration
-        let mut command = std::process::Command::new(
-            self.get_command()
-        );
-        // Add the arguments to the command
-        command.args(self.get_arguments());
+    async fn execute(&mut self) -> anyhow::Result<(), anyhow::Error> {
+
+        let mut command = self.get_process_command();
 
         // Spawn the command as a child process
         let mut child = command.spawn().expect(
             &format!("Failed to execute {}", self.get_execution_type())
         );
         // Wait for the child process to finish
-        let status = child.wait().expect("Failed to wait on child");
+        let status = child.wait().await.expect("Failed to wait on child");
 
         // If the command failed and retry is enabled, try to execute it again
         let mut attempts = 0;
@@ -111,6 +130,7 @@ impl Execution for Program {
                 .spawn()
                 .expect("Failed to execute command")
                 .wait()
+                .await
                 .expect("Failed to wait on child");
             // If the command fails again and retry limit is reached, print an error message and stop the chain
             if !status.success()
@@ -140,6 +160,7 @@ impl Execution for Program {
                     .spawn()
                     .expect("Failed to execute command")
                     .wait()
+                    .await
                     .expect("Failed to wait on child");
                 if status.success() {
                     break;
