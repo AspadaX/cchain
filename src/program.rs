@@ -46,7 +46,7 @@ impl Program {
 
     pub fn get_process_command(&self) -> tokio::process::Command {
         let mut command = if cfg!(
-            any(target_os = "linux", target_os = "macos")
+            any(target_os = "linux")
         ) {
             // On Unix systems, use 'sh' to execute the command
             let mut cmd = tokio::process::Command::new("sh");
