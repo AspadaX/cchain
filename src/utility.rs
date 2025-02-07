@@ -70,13 +70,13 @@ pub fn generate_template() {
         Program::new(
             "example_command".to_string(),
             vec!["arg1".to_string(), "arg2".to_string()],
-            HashMap::new(),
+            Some(HashMap::new()),
             3,
         ),
         Program::new(
             "another_command".to_string(),
             vec!["argA".to_string(), "argB".to_string()],
-            HashMap::new(),
+            Some(HashMap::new()),
             5,
         ),
     ];
