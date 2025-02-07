@@ -45,7 +45,7 @@ impl Program {
     }
 
     pub fn get_process_command(&self) -> tokio::process::Command {
-        let command = if cfg!(
+        let mut command = if cfg!(
             any(target_os = "linux", target_os = "macos")
         ) {
             // On Unix systems, use 'sh' to execute the command
@@ -57,12 +57,15 @@ impl Program {
             cmd
         } else {
             // On non-Unix systems, execute the command directly
-            let mut cmd = tokio::process::Command::new(
-                self.get_command()
-            );
+            let mut cmd = tokio::process::Command::new(self.get_command());
             cmd.args(self.get_arguments());
             cmd
         };
+
+        // Override environment variables if provided
+        if let Some(ref env_vars) = self.environment_variables_override {
+            command.envs(env_vars);
+        }
 
         command
     }

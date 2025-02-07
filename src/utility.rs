@@ -76,7 +76,7 @@ pub fn generate_template() {
         Program::new(
             "another_command".to_string(),
             vec!["argA".to_string(), "argB".to_string()],
-            Some(HashMap::new()),
+            None,
             5,
         ),
     ];
