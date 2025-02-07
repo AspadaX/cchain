@@ -10,11 +10,11 @@ use anyhow::{Error, Result};
 use bookmark::Bookmark;
 use clap::Parser;
 use command::Arguments;
-use configuration::Configuration;
+use configuration::Command;
 use log::{error, info, warn};
 use utility::{
-    configuration_selection, execute_argument_function, execute_command, generate_template,
-    resolve_cchain_configuration_filepaths,
+    configuration_selection, execute_argument_function, generate_template,
+    resolve_cchain_configuration_filepaths, Execution,
 };
 
 #[tokio::main]
@@ -146,14 +146,15 @@ async fn main() -> Result<(), Error> {
     };
 
     // Load and parse the configuration file
-    let configurations: Vec<Configuration> = serde_json::from_str(
-        &std::fs::read_to_string(&configurations_file).expect("Failed to load configurations"),
+    let commands: Vec<Command> = serde_json::from_str(
+        &std::fs::read_to_string(&configurations_file)
+            .expect("Failed to load configurations"),
     )?;
 
     // Iterate over each configuration and execute the commands
-    for mut configuration in configurations {
-        execute_argument_function(&mut configuration).await?;
-        execute_command(&configuration);
+    for mut command in commands {
+        execute_argument_function(&mut command).await?;
+        command.execute()?;
     }
 
     Ok(())

@@ -1,6 +1,5 @@
 use std::str::FromStr;
 
-use anyhow::anyhow;
 use async_openai::{
     config::OpenAIConfig,
     types::{
@@ -11,8 +10,6 @@ use async_openai::{
 };
 use log::{error, info};
 use regex;
-
-use crate::configuration::Configuration;
 
 pub struct Function {
     name: String,

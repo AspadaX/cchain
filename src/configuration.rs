@@ -1,33 +1,30 @@
-use std::{path::Display, str::FromStr};
+use std::{collections::HashMap, path::Display, str::FromStr};
 
 use serde::{Deserialize, Serialize};
 
+use crate::utility::{Execution, ExecutionType};
+
 #[derive(Deserialize, Serialize)]
-pub struct Configuration {
+pub struct Command {
     command: String,
     arguments: Vec<String>,
-    retry: i32,
+    environment_variables_override: HashMap<String, String>,
+    retry: i32
 }
 
-impl Configuration {
-    pub fn new(command: String, arguments: Vec<String>, retry: i32) -> Self {
-        Configuration {
+impl Command {
+    pub fn new(
+        command: String, 
+        arguments: Vec<String>, 
+        environment_variables_override: HashMap<String, String>, 
+        retry: i32
+    ) -> Self {
+        Command {
             command,
             arguments,
+            environment_variables_override,
             retry,
         }
-    }
-
-    pub fn get_command(&self) -> &str {
-        &self.command
-    }
-
-    pub fn get_arguments(&self) -> &Vec<String> {
-        &self.arguments
-    }
-
-    pub fn get_retry(&self) -> &i32 {
-        &self.retry
     }
 
     pub fn revise_argument(&mut self, argument_index: usize, new_argument: String) {
@@ -35,13 +32,13 @@ impl Configuration {
     }
 }
 
-impl std::fmt::Display for Configuration {
+impl std::fmt::Display for Command {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} {}", self.command, self.arguments.join(" "))
     }
 }
 
-impl FromStr for Configuration {
+impl FromStr for Command {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -53,6 +50,31 @@ impl FromStr for Configuration {
         let command = parts[0].to_string();
         let arguments = parts[1..].iter().map(|s| s.to_string()).collect();
 
-        Ok(Configuration::new(command, arguments, 0))
+        Ok(
+            Command::new(
+                command, 
+                arguments, 
+                HashMap::new(),
+                0
+            )
+        )
+    }
+}
+
+impl Execution for Command {
+    fn get_command(&self) -> &str {
+        &self.command
+    }
+
+    fn get_arguments(&self) -> &Vec<String> {
+        &self.arguments
+    }
+
+    fn get_retry(&self) -> &i32 {
+        &self.retry
+    }
+
+    fn get_execution_type(&self) -> &ExecutionType {
+        &ExecutionType::Command
     }
 }
