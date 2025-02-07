@@ -139,11 +139,7 @@ async fn main() -> Result<(), Error> {
     };
 
     // Load and parse the configuration file
-    let mut chain: Chain = Chain::from_file(
-        &tokio::fs::read_to_string(&configurations_file)
-            .await
-            .expect("Failed to load configurations"),
-    )?;
+    let mut chain: Chain = Chain::from_file(&configurations_file)?;
 
     // Iterate over each configuration and execute the commands
     chain.execute().await?;
