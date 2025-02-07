@@ -8,7 +8,7 @@ use async_openai::{
     },
     Client,
 };
-use log::{error, info};
+use log::info;
 use regex;
 
 pub struct Function {

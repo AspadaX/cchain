@@ -5,9 +5,9 @@ use std::fs::DirEntry;
 use std::str::FromStr;
 
 use anyhow::{Error, Result};
-use log::{error, info, warn};
+use log::{error, info};
 
-use crate::configuration::Command;
+use crate::program::Program;
 use crate::function;
 
 fn get_paths(path: &std::path::Path) -> Vec<DirEntry> {
@@ -67,13 +67,13 @@ pub fn configuration_selection(paths: Vec<String>) -> String {
 pub fn generate_template() {
     // Create a template configuration
     let template = vec![
-        Command::new(
+        Program::new(
             "example_command".to_string(),
             vec!["arg1".to_string(), "arg2".to_string()],
             HashMap::new(),
             3,
         ),
-        Command::new(
+        Program::new(
             "another_command".to_string(),
             vec!["argA".to_string(), "argB".to_string()],
             HashMap::new(),
@@ -100,7 +100,7 @@ pub fn generate_template() {
 /// # Returns
 ///
 /// A `Result` indicating the success or failure of the function execution.
-pub async fn execute_argument_function(configuration: &mut Command) -> Result<(), Error> {
+pub async fn execute_argument_function(configuration: &mut Program) -> Result<(), Error> {
     // Iterate over each argument in the configuration
     for index in 0..configuration.get_arguments().len() {
         // Clone the current argument
@@ -156,119 +156,25 @@ pub fn resolve_cchain_configuration_filepaths(
 }
 
 pub enum ExecutionType {
-    Command,
+    Program,
     Function
 }
 
 impl std::fmt::Display for ExecutionType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ExecutionType::Command => f.write_str("Command"),
+            ExecutionType::Program => f.write_str("Program"),
             ExecutionType::Function => f.write_str("Function")
         }
     }
 }
 
 /// Executes a command based on the provided configuration.
-///
-/// # Arguments
-///
-/// * `configuration` - A reference to the `Configuration` struct containing the command and its arguments.
 pub trait Execution 
 where
     Self: std::fmt::Display
 {
-    fn get_command(&self) -> &str;
-
-    fn get_arguments(&self) -> &Vec<String>;
-
-    fn get_retry(&self) -> &i32;
-
     fn get_execution_type(&self) -> &ExecutionType;
 
-    fn execute(&self) -> Result<(), Error> {
-        // Create a new command based on the configuration
-        let mut command = std::process::Command::new(
-            self.get_command()
-        );
-        // Add the arguments to the command
-        command.args(self.get_arguments());
-
-        // Spawn the command as a child process
-        let mut child = command.spawn().expect(
-            &format!("Failed to execute {}", self.get_execution_type())
-        );
-        // Wait for the child process to finish
-        let status = child.wait().expect("Failed to wait on child");
-
-        // If the command failed and retry is enabled, try to execute it again
-        let mut attempts = 0;
-        while !status.success()
-            && (self.get_retry() == &-1 || &attempts < self.get_retry())
-        {
-            attempts += 1;
-            warn!(
-                "Retrying {}: {}, attempt: {}", 
-                self.get_execution_type(), 
-                &self, 
-                attempts
-            );
-            // Spawn the command again as a child process
-            let status = command
-                .spawn()
-                .expect("Failed to execute command")
-                .wait()
-                .expect("Failed to wait on child");
-            // If the command fails again and retry limit is reached, print an error message and stop the chain
-            if !status.success()
-                && self.get_retry() != &-1
-                && &attempts >= self.get_retry()
-            {
-                error!(
-                    "Failed to execute {}: {}", 
-                    self.get_execution_type(), 
-                    &self
-                );
-                return Ok(());
-            }
-        }
-
-        // If the command fails and retry is -1, keep retrying indefinitely
-        if !status.success() && self.get_retry() == &-1 {
-            loop {
-                attempts += 1;
-                warn!(
-                    "Retrying {}: {}, attempt: {}", 
-                    self.get_execution_type(),
-                    &self, 
-                    attempts
-                );
-                let status = command
-                    .spawn()
-                    .expect("Failed to execute command")
-                    .wait()
-                    .expect("Failed to wait on child");
-                if status.success() {
-                    break;
-                }
-            }
-        }
-
-        // If the command fails and retry is 0, stop the chain
-        if !status.success() && self.get_retry() == &0 {
-            error!(
-                "Failed to execute {}: {}\n", 
-                self.get_execution_type(), 
-                &self
-            );
-            return Ok(());
-        }
-
-        // Separation between commands
-        info!("===============================");
-        info!("Finished executing command: {}", &self);
-        info!("===============================");
-
-        Ok(())
-    }
+    fn execute(&self) -> Result<(), Error>;
 }

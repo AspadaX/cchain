@@ -1,6 +1,6 @@
 mod bookmark;
 mod command;
-mod configuration;
+mod program;
 mod function;
 mod utility;
 
@@ -10,7 +10,7 @@ use anyhow::{Error, Result};
 use bookmark::Bookmark;
 use clap::Parser;
 use command::Arguments;
-use configuration::Command;
+use program::Program;
 use log::{error, info, warn};
 use utility::{
     configuration_selection, execute_argument_function, generate_template,
@@ -146,15 +146,15 @@ async fn main() -> Result<(), Error> {
     };
 
     // Load and parse the configuration file
-    let commands: Vec<Command> = serde_json::from_str(
+    let programs: Vec<Program> = serde_json::from_str(
         &std::fs::read_to_string(&configurations_file)
             .expect("Failed to load configurations"),
     )?;
 
     // Iterate over each configuration and execute the commands
-    for mut command in commands {
-        execute_argument_function(&mut command).await?;
-        command.execute()?;
+    for mut program in programs {
+        execute_argument_function(&mut program).await?;
+        program.execute()?;
     }
 
     Ok(())

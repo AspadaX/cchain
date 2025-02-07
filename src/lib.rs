@@ -1,4 +1,4 @@
-pub mod configuration;
+pub mod program;
 pub mod function;
 pub mod bookmark;
 pub mod command;
