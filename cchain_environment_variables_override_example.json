@@ -1,0 +1,21 @@
+[
+  {
+    "command": "echo",
+    "arguments": [
+      "$hello"
+    ],
+    "environment_variables_override": {
+      "hello": "world",
+      "foo": "bar"
+    },
+    "retry": 0
+  },
+  {
+    "command": "echo",
+    "arguments": [
+      "$fool"
+    ],
+    "environment_variables_override": null,
+    "retry": 0
+  }
+]

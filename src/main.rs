@@ -4,10 +4,9 @@ use anyhow::{Error, Result};
 use cchain::{bookmark::Bookmark, chain::Chain};
 use clap::Parser;
 use cchain::command::Arguments;
-use cchain::program::Program;
 use log::{error, info, warn};
 use cchain::utility::{
-    configuration_selection, execute_argument_function, generate_template,
+    configuration_selection, generate_template,
     resolve_cchain_configuration_filepaths, Execution,
 };
 

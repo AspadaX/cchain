@@ -9,7 +9,7 @@ pub struct Chain {
 impl Chain {
     pub fn from_file(path: &str) -> Result<Self, Error> {
         let programs: Vec<Program> = serde_json::from_str(
-            &std::fs::read_to_string(&path)
+            &std::fs::read_to_string(path)
                 .expect("Failed to load configurations"),
         )?;
 
