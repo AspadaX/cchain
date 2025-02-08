@@ -28,7 +28,7 @@ cargo build --release
 ```
 
 ## Usage
-Create a JSON configuration file with the commands you want to execute. Example configuration:
+Create a JSON configuration file with the commands you want to execute. Example configuration, which you may find it in the `examples` folder of this repository:
 ```json
 [
     {
@@ -43,27 +43,30 @@ Create a JSON configuration file with the commands you want to execute. Example 
     }
 ]
 ```
-Additionally, if you do not specify a configuration file, `cchain` will list all available configuration files in the current working directory that start with `cchain_` and have a `.json` extension. You can then select the desired configuration file by entering the corresponding number.
+
+However, in certain cases, you may want to make use of the envrionment variables. Please refer to `examples/cchain_environment_variables_override_example.json` for an example.
+
+Additionally, if you do not specify a configuration file, `cchain` will list all available configuration files in the bookmark that start with `cchain_` and have a `.json` extension. You can then select the desired configuration file by entering the corresponding number.
 
 Example:
 ```sh
 cchain
 ```
-This will prompt you to select from the available configuration files in the current directory.
+This will prompt you to select from the available configuration files in the bookmark.
 
-Run `cchain` with the path to your configuration file:
+Run `cchain` with the path to your configuration file with `--configuration-file` flag, which is in short `-c`:
 ```sh
-cchain --configuration_file path/to/configuration.json
+cchain -c path/to/configuration.json
 ```
 
-Also, if you would like to pick a command chain in a different folder than the current one, you can use the `--directory` flag:
+Also, if you would like to pick a command chain in a different folder than the current one, you can use the `--configuration-files` flag, which is in short `-d`:
 ```sh
-cchain --configuration_files path/to/the/directory
+cchain -d path/to/the/directory
 ```
 
-To generate a template configuration file, use the `--generate` flag:
+To generate a template configuration file, use the `--generate` flag, which is in short `-g`:
 ```sh
-cchain --generate
+cchain -g
 ```
 
 ### Using Functions with LLM
@@ -95,11 +98,11 @@ Here in the example, we are using a locally hosted Ollama model.
 ### Bookmarking Command Chains
 You can bookmark frequently used command chains for quick access. To bookmark a command chain, use the `--bookmark` flag followed by a name for the bookmark:
 ```sh
-cchain --configuration_file path/to/configuration.json --bookmark
+cchain -c path/to/configuration.json -b
 ```
 Or, you can bookmark all configurations under a given directory.
 ```sh
-cchain --configuration_files path/to/the/directory --bookmark
+cchain -d path/to/the/directory -b
 ```
 To delete a bookmark, use the following command and it will prompt you to select the bookmark to delete:
 ```sh
