@@ -1,9 +1,14 @@
 use anyhow::{Result, Error};
 
-use crate::{program::Program, utility::{execute_argument_function, Execution, ExecutionType}};
+use crate::{
+    program::Program, 
+    utility::{execute_argument_function, Execution, ExecutionType}, 
+    variable::Variable
+};
 
 pub struct Chain {
-    programs: Vec<Program>
+    programs: Vec<Program>,
+    variables: Vec<Variable>
 }
 
 impl Chain {
