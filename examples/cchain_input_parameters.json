@@ -13,7 +13,7 @@
     {
       "command": "echo",
       "arguments": [
-        "$<<env_var_output>>"
+        "$<<env_var_output:on_program_execution>>"
       ],
       "environment_variables_override": {
         "foo": "bar"

@@ -1,14 +1,13 @@
 use std::fs::canonicalize;
 
 use anyhow::{Error, Result};
+use cchain::command::Arguments;
+use cchain::utility::{
+    configuration_selection, generate_template, resolve_cchain_configuration_filepaths, Execution,
+};
 use cchain::{bookmark::Bookmark, chain::Chain};
 use clap::Parser;
-use cchain::command::Arguments;
 use log::{error, info, warn};
-use cchain::utility::{
-    configuration_selection, generate_template,
-    resolve_cchain_configuration_filepaths, Execution,
-};
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -26,9 +25,7 @@ async fn main() -> Result<(), Error> {
     let mut bookmark: Bookmark = Bookmark::from_file();
     // Convert the relative path into absolute for configuration_file
     if let Some(path) = arguments.configuration_file {
-        arguments.configuration_file = Some(canonicalize(path)?
-            .to_string_lossy()
-            .to_string());
+        arguments.configuration_file = Some(canonicalize(path)?.to_string_lossy().to_string());
     }
 
     // If `configuration_files` is set, get the file paths first.
@@ -53,28 +50,24 @@ async fn main() -> Result<(), Error> {
     }
 
     if arguments.delete_bookmark {
-        let bookmarked_configuration_filepaths: &Vec<String> = bookmark
-            .get_bookmarked_configurations();
-        
+        let bookmarked_configuration_filepaths: &Vec<String> =
+            bookmark.get_bookmarked_configurations();
+
         let selected_configuration: String =
-            configuration_selection(
-                bookmarked_configuration_filepaths.to_vec()
-            );
-        
-        bookmark.unbookmark_configuration_by_path(
-            &selected_configuration
-        )?;
-        
+            configuration_selection(bookmarked_configuration_filepaths.to_vec());
+
+        bookmark.unbookmark_configuration_by_path(&selected_configuration)?;
+
         bookmark.save();
-        
+
         info!(
             "Bookmark at {} is removed from the collection.",
             selected_configuration
         );
-        
+
         return Ok(());
     }
-    
+
     // If neither configuration_file nor configuration_files is set, prompt the user to select from bookmarked configurations
     if arguments.configuration_file.is_none() && arguments.configuration_files.is_none() {
         let bookmarked_configuration_filepaths = bookmark.get_bookmarked_configurations();
@@ -110,8 +103,8 @@ async fn main() -> Result<(), Error> {
                 match bookmark.bookmark_configuration(filepath.clone()) {
                     Ok(_) => {
                         info!("{} is registered successfully.", filepath);
-                        continue
-                    },
+                        continue;
+                    }
                     Err(error) => {
                         warn!("{}, skipped bookmarking.", error.to_string());
                         continue;

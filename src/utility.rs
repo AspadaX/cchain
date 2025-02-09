@@ -7,8 +7,8 @@ use std::str::FromStr;
 use anyhow::{Error, Result};
 use log::{error, info};
 
-use crate::program::Program;
 use crate::function;
+use crate::program::Program;
 
 fn get_paths(path: &std::path::Path) -> Vec<DirEntry> {
     let mut paths: Vec<DirEntry> = Vec::new();
@@ -71,11 +71,13 @@ pub fn generate_template() {
             "example_command".to_string(),
             vec!["arg1".to_string(), "arg2".to_string()],
             Some(HashMap::new()),
+            Some("<<hi>>".to_string()),
             3,
         ),
         Program::new(
             "another_command".to_string(),
             vec!["argA".to_string(), "argB".to_string()],
+            None,
             None,
             5,
         ),
@@ -146,9 +148,7 @@ pub fn resolve_cchain_configuration_filepaths(
     let paths = get_paths(path);
 
     for entry in paths {
-        let path_str = canonicalize(entry.path())?
-            .to_string_lossy()
-            .to_string();
+        let path_str = canonicalize(entry.path())?.to_string_lossy().to_string();
         json_paths.push(path_str);
     }
 
@@ -158,7 +158,7 @@ pub fn resolve_cchain_configuration_filepaths(
 pub enum ExecutionType {
     Chain,
     Program,
-    Function
+    Function,
 }
 
 impl std::fmt::Display for ExecutionType {
@@ -166,17 +166,17 @@ impl std::fmt::Display for ExecutionType {
         match self {
             ExecutionType::Chain => f.write_str("Chain"),
             ExecutionType::Program => f.write_str("Program"),
-            ExecutionType::Function => f.write_str("Function")
+            ExecutionType::Function => f.write_str("Function"),
         }
     }
 }
 
-/// Executes a command based on the provided configuration.
-pub trait Execution 
+/// Anything that can be executed
+pub trait Execution
 where
-    Self: std::fmt::Display
+    Self: std::fmt::Display,
 {
     fn get_execution_type(&self) -> &ExecutionType;
 
-    async fn execute(&mut self) -> Result<(), Error>;
+    async fn execute(&mut self) -> Result<String, Error>;
 }
