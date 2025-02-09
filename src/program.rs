@@ -221,7 +221,6 @@ impl Execution for Program {
         // Log separation / final output, using the collected output as needed.
         info!("===============================");
         info!("Finished executing command: {}", &self);
-        info!("Output:\n{}", output_stdout);
         info!("===============================");
 
         Ok(output_stdout)

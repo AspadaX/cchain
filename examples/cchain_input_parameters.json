@@ -1,24 +1,20 @@
 [
-    {
-      "command": "echo",
-      "arguments": [
-        "$<<env_var_name>>"
-      ],
-      "environment_variables_override": {
-        "hello": "world"
-      },
-      "stdout_stored_to": "<<env_var_output>>",
-      "retry": 0
+  {
+    "command": "echo",
+    "arguments": ["$<<env_var_name>>"],
+    "environment_variables_override": {
+      "hello": "world"
     },
-    {
-      "command": "echo",
-      "arguments": [
-        "$<<env_var_output:on_program_execution>>"
-      ],
-      "environment_variables_override": {
-        "foo": "bar"
-      },
-      "stdout_stored_to": null,
-      "retry": 0
-    }
-  ]
+    "stdout_stored_to": "<<env_var_output>>",
+    "retry": 0
+  },
+  {
+    "command": "echo",
+    "arguments": ["$<<env_var_output>>"],
+    "environment_variables_override": {
+      "foo": "bar"
+    },
+    "stdout_stored_to": null,
+    "retry": 0
+  }
+]

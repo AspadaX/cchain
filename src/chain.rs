@@ -24,18 +24,34 @@ impl Chain {
         // if so, register them in the chain.
         let mut variables: Vec<Variable> = Vec::new();
         for program in &programs {
-            if let Some(awaitable_variable) = program.get_awaitable_variable() {
-                variables.push(Variable::parse_await_variable(awaitable_variable));
+            if let Some(awaitable_variable) = program
+                .get_awaitable_variable() {
+                    variables.push(
+                        Variable::parse_await_variable(awaitable_variable)
+                    );
             }
 
             for argument in program.get_arguments() {
                 let variables_in_arguments: Vec<Variable> =
                     Variable::parse_variables_from_str(argument)?;
-
-                variables.extend(variables_in_arguments);
+                
+                if variables.len() != 0 {
+                    for item in &variables_in_arguments {
+                        if !variables
+                                .iter()
+                                .any(
+                                    |v| 
+                                    v.get_variable_name() == item.get_variable_name()
+                                ) {
+                                    variables.push(item.to_owned());
+                        }
+                    }
+                } else {
+                    variables.extend(variables_in_arguments);
+                }
             }
         }
-
+        
         Ok(Self {
             programs,
             variables,
@@ -66,7 +82,7 @@ impl VariableGroupControl for Chain {
 
     fn update_value(&mut self, variable_name: &str, value: String) {
         for variable in &mut self.variables {
-            if variable.get_variable_name() == variable_name {
+            if variable.get_raw_variable_name() == variable_name {
                 variable.register_value(value);
                 break;
             }
