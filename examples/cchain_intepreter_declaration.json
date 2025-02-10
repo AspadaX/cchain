@@ -6,6 +6,9 @@
       "hello": "world"
     },
     "stdout_stored_to": "<<env_var_output>>",
+    "stdout_storage_options": {
+      "without_newline_characters": true
+    },
     "interpreter": "sh",
     "retry": 0
   },
