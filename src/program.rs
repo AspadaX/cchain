@@ -185,7 +185,7 @@ impl Program {
 
     fn apply_failure_handling_options(&self, error_message: String) {
         if let Some(options) = &self.failure_handling_options {
-            if options.continue_on_failure {
+            if !options.continue_on_failure {
                 error!("{}", error_message);
                 panic!();
             }
