@@ -225,7 +225,6 @@ impl Execution for Program {
     }
 
     async fn execute(&mut self) -> Result<String, anyhow::Error> {
-        info!("{:?}", self.failure_handling_options);
         // First attempt
         let (mut status, mut output_stdout) = run_attempt(self).await;
         let mut attempts = 0;
