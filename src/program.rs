@@ -10,7 +10,14 @@ use crate::{
     variable::Variable,
 };
 
-#[derive(Deserialize, Serialize)]
+/// Currently supported interpreters
+#[derive(Debug, Deserialize, Serialize, Eq, PartialEq, PartialOrd)]
+pub enum Interpreter {
+    #[serde(alias = "sh")]
+    Sh,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Program {
     /// The command to execute.
     /// This should be the path or name of the program.
@@ -24,6 +31,9 @@ pub struct Program {
     /// Optional variable name where the standard output of the program
     /// will be stored.
     stdout_stored_to: Option<String>,
+    /// Allow for declaring the type of interpreter to use when 
+    /// running a command.
+    interpreter: Option<Interpreter>,
     /// Retry policy for executing the command.
     ///
     /// Use -1 to retry indefinitely, or any non-negative value to specify
@@ -37,6 +47,7 @@ impl Program {
         arguments: Vec<String>,
         environment_variables_override: Option<HashMap<String, String>>,
         stdout_stored_to: Option<String>,
+        interpreter: Option<Interpreter>,
         retry: i32,
     ) -> Self {
         Program {
@@ -44,6 +55,7 @@ impl Program {
             arguments,
             environment_variables_override,
             stdout_stored_to,
+            interpreter,
             retry,
         }
     }
@@ -95,26 +107,26 @@ impl Program {
 
     /// Constructs a Tokio process command to execute the configured program.
     ///
-    /// Depending on the target operating system, this method builds a command:
-    /// - On Unix-based systems (e.g., Linux), it creates a shell (`sh`) command, combining the command and
-    ///   its arguments into a single command line using the `-c` option.
-    /// - On non-Unix systems, it invokes the command directly with the provided arguments.
+    /// It determines the interpreter to use based on the user specification. 
     ///
     /// Additionally, if the `environment_variables_override` field is set, its environment variables
     /// are applied to the command.
     pub fn get_process_command(&self) -> tokio::process::Command {
-        let mut command = if cfg!(any(target_os = "linux")) {
-            // On Unix systems, use 'sh' to execute the command.
-            let mut cmd = tokio::process::Command::new("sh");
-            let command_line: String =
-                format!("{} {}", self.get_command(), self.get_arguments().join(" "));
-            cmd.arg("-c").arg(command_line);
-            cmd
-        } else {
-            // On non-Unix systems, execute the command directly.
-            let mut cmd = tokio::process::Command::new(self.get_command());
-            cmd.args(self.get_arguments());
-            cmd
+        let mut command: tokio::process::Command = match self.interpreter {
+            Some(Interpreter::Sh) => {
+                // Use `sh` if the user has specified. 
+                let mut cmd = tokio::process::Command::new("sh");
+                let command_line: String =
+                    format!("{} {}", self.get_command(), self.get_arguments().join(" "));
+                cmd.arg("-c").arg(command_line);
+                cmd
+            },
+            _ => {
+                // On non-Unix systems, execute the command directly.
+                let mut cmd = tokio::process::Command::new(self.get_command());
+                cmd.args(self.get_arguments());
+                cmd
+            }
         };
 
         // Override environment variables if provided.
@@ -152,6 +164,7 @@ impl FromStr for Program {
             command,
             arguments,
             Some(HashMap::new()),
+            None,
             None,
             0,
         ))

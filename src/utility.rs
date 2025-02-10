@@ -8,6 +8,7 @@ use anyhow::{Error, Result};
 use log::{error, info};
 
 use crate::function;
+use crate::program::Interpreter;
 use crate::program::Program;
 
 fn get_paths(path: &std::path::Path) -> Vec<DirEntry> {
@@ -72,11 +73,13 @@ pub fn generate_template() {
             vec!["arg1".to_string(), "arg2".to_string()],
             Some(HashMap::new()),
             Some("<<hi>>".to_string()),
+            Some(Interpreter::Sh),
             3,
         ),
         Program::new(
             "another_command".to_string(),
             vec!["argA".to_string(), "argB".to_string()],
+            None,
             None,
             None,
             5,

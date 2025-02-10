@@ -1,0 +1,22 @@
+[
+  {
+    "command": "echo",
+    "arguments": ["$<<env_var_name>>"],
+    "environment_variables_override": {
+      "hello": "world"
+    },
+    "stdout_stored_to": "<<env_var_output>>",
+    "interpreter": "sh",
+    "retry": 0
+  },
+  {
+    "command": "echo",
+    "arguments": ["$<<env_var_output>>"],
+    "environment_variables_override": {
+      "world": "foobar"
+    },
+    "stdout_stored_to": null,
+    "interpreter": "sh",
+    "retry": 0
+  }
+]
