@@ -1,6 +1,6 @@
 use std::{collections::HashMap, str::FromStr};
 
-use anyhow::Error;
+use anyhow::{anyhow, Error};
 use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -32,12 +32,12 @@ impl Default for StdoutStorageOptions {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct FailureHandlingOptions {
-    pub continue_on_failure: bool,
+    pub exit_on_failure: bool,
 }
 
 impl Default for FailureHandlingOptions {
     fn default() -> Self {
-        Self { continue_on_failure: false }
+        Self { exit_on_failure: true }
     }
 }
 
@@ -56,12 +56,14 @@ pub struct Program {
     /// will be stored.
     stdout_stored_to: Option<String>,
     /// Additional conditions when storaging the stdout to a variable
-    stdout_storage_options: Option<StdoutStorageOptions>,
+    #[serde(default)]
+    stdout_storage_options: StdoutStorageOptions,
     /// Allow for declaring the type of interpreter to use when 
     /// running a command.
     interpreter: Option<Interpreter>,
     /// Failure handling options
-    failure_handling_options: Option<FailureHandlingOptions>,
+    #[serde(default)]
+    failure_handling_options: FailureHandlingOptions,
     /// Retry policy for executing the command.
     ///
     /// Use -1 to retry indefinitely, or any non-negative value to specify
@@ -75,9 +77,9 @@ impl Program {
         arguments: Vec<String>,
         environment_variables_override: Option<HashMap<String, String>>,
         stdout_stored_to: Option<String>,
-        stdout_storage_options: Option<StdoutStorageOptions>,
+        stdout_storage_options: StdoutStorageOptions,
         interpreter: Option<Interpreter>,
-        failure_handling_options: Option<FailureHandlingOptions>,
+        failure_handling_options: FailureHandlingOptions,
         retry: i32,
     ) -> Self {
         Program {
@@ -176,20 +178,18 @@ impl Program {
     /// In-place operation on the stdout string. 
     /// Directly apply the stdout storage options.
     fn apply_stdout_storage_options(&self, stdout_string: &mut String) {
-        if let Some(options) = &self.stdout_storage_options {
-            if options.without_newline_characters {
-                *stdout_string = stdout_string.trim_matches('\n').to_string();
-            }
+        if self.stdout_storage_options.without_newline_characters {
+            *stdout_string = stdout_string.trim_matches('\n').to_string();
         }
     }
 
-    fn apply_failure_handling_options(&self, error_message: String) {
-        if let Some(options) = &self.failure_handling_options {
-            if !options.continue_on_failure {
-                error!("{}", error_message);
-                std::process::exit(1);
-            }
+    fn apply_failure_handling_options(&self, error_message: String) -> Result<(), Error> {
+        if self.failure_handling_options.exit_on_failure {
+            error!("{}", error_message);
+            return Err(anyhow!("{}", error_message));
         }
+
+        Ok(())
     }
 }
 
@@ -225,6 +225,7 @@ impl Execution for Program {
     }
 
     async fn execute(&mut self) -> Result<String, anyhow::Error> {
+        info!("{:?}", self.failure_handling_options);
         // First attempt
         let (mut status, mut output_stdout) = run_attempt(self).await;
         let mut attempts = 0;
@@ -249,9 +250,12 @@ impl Execution for Program {
                 info!("Process output:\n{}", output_stdout);
 
                 self.apply_stdout_storage_options(&mut output_stdout);
-                self.apply_failure_handling_options(error_message);
 
-                return Ok(output_stdout);
+                if let Err(result) = self.apply_failure_handling_options(error_message) {
+                    return Err(result);
+                } else {
+                    return Ok(output_stdout)
+                }
             }
         }
 
@@ -283,9 +287,12 @@ impl Execution for Program {
             );
             info!("Process output:\n{}", output_stdout);
             self.apply_stdout_storage_options(&mut output_stdout);
-            self.apply_failure_handling_options(error_message);
 
-            return Ok(output_stdout);
+            if let Err(result) = self.apply_failure_handling_options(error_message) {
+                return Err(result);
+            } else {
+                return Ok(output_stdout)
+            }
         }
 
         // Log separation / final output, using the collected output as needed.
@@ -347,9 +354,9 @@ impl Default for Program {
             arguments: vec![],
             environment_variables_override: Some(HashMap::new()),
             stdout_stored_to: None,
-            stdout_storage_options: None,
+            stdout_storage_options: StdoutStorageOptions::default(),
             interpreter: None,
-            failure_handling_options: Some(FailureHandlingOptions::default()),
+            failure_handling_options: FailureHandlingOptions::default(),
             retry: 0,
         }
     }

@@ -74,9 +74,9 @@ pub fn generate_template() {
             vec!["arg1".to_string(), "arg2".to_string()],
             Some(HashMap::new()),
             Some("<<hi>>".to_string()),
-            Some(StdoutStorageOptions::default()),
+            StdoutStorageOptions::default(),
             Some(Interpreter::Sh),
-            Some(FailureHandlingOptions::default()),
+            FailureHandlingOptions::default(),
             3,
         ),
         Program::new(
@@ -84,9 +84,9 @@ pub fn generate_template() {
             vec!["argA".to_string(), "argB".to_string()],
             None,
             None,
+            StdoutStorageOptions::default(),
             None,
-            None,
-            None,
+            FailureHandlingOptions::default(),
             5,
         ),
     ];
