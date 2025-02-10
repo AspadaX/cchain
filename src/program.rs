@@ -18,6 +18,11 @@ pub enum Interpreter {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+pub struct StdoutStorageOptions {
+    pub without_newline_characters: Option<bool>
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Program {
     /// The command to execute.
     /// This should be the path or name of the program.
@@ -31,6 +36,8 @@ pub struct Program {
     /// Optional variable name where the standard output of the program
     /// will be stored.
     stdout_stored_to: Option<String>,
+    /// Additional conditions when storaging the stdout to a variable
+    stdout_storage_options: Option<StdoutStorageOptions>,
     /// Allow for declaring the type of interpreter to use when 
     /// running a command.
     interpreter: Option<Interpreter>,
@@ -47,6 +54,7 @@ impl Program {
         arguments: Vec<String>,
         environment_variables_override: Option<HashMap<String, String>>,
         stdout_stored_to: Option<String>,
+        stdout_storage_options: Option<StdoutStorageOptions>,
         interpreter: Option<Interpreter>,
         retry: i32,
     ) -> Self {
@@ -55,6 +63,7 @@ impl Program {
             arguments,
             environment_variables_override,
             stdout_stored_to,
+            stdout_storage_options,
             interpreter,
             retry,
         }
@@ -140,6 +149,20 @@ impl Program {
     pub fn get_awaitable_variable(&self) -> &Option<String> {
         &self.stdout_stored_to
     }
+
+    /// In-place operation on the stdout string. 
+    /// Directly apply the stdout storage options.
+    fn apply_stdout_storage_options(&self, stdout_string: &mut String) {
+
+        if let Some(options) = &self.stdout_storage_options {
+            if let Some(without_newline_characters) = options.without_newline_characters {
+                if without_newline_characters {
+                    *stdout_string = stdout_string.trim_matches('\n').to_string();
+                }
+            }
+        }
+
+    }
 }
 
 impl std::fmt::Display for Program {
@@ -160,14 +183,11 @@ impl FromStr for Program {
         let command = parts[0].to_string();
         let arguments = parts[1..].iter().map(|s| s.to_string()).collect();
 
-        Ok(Program::new(
+        Ok(Self {
             command,
             arguments,
-            Some(HashMap::new()),
-            None,
-            None,
-            0,
-        ))
+            ..Default::default()
+        })
     }
 }
 
@@ -197,6 +217,8 @@ impl Execution for Program {
             if !status.success() && self.get_retry() != &-1 && &attempts >= self.get_retry() {
                 error!("Failed to execute {}: {}", self.get_execution_type(), &self);
                 info!("Process output:\n{}", output_stdout);
+                self.apply_stdout_storage_options(&mut output_stdout);
+
                 return Ok(output_stdout);
             }
         }
@@ -228,6 +250,8 @@ impl Execution for Program {
                 &self
             );
             info!("Process output:\n{}", output_stdout);
+            self.apply_stdout_storage_options(&mut output_stdout);
+
             return Ok(output_stdout);
         }
 
@@ -235,6 +259,8 @@ impl Execution for Program {
         info!("===============================");
         info!("Finished executing command: {}", &self);
         info!("===============================");
+
+        self.apply_stdout_storage_options(&mut output_stdout);
 
         Ok(output_stdout)
     }
@@ -279,4 +305,18 @@ async fn run_attempt(program: &mut Program) -> (std::process::ExitStatus, String
     let collected = reader_handle.await.expect("Reader task panicked");
 
     (status, collected)
+}
+
+impl Default for Program {
+    fn default() -> Self {
+        Self {
+            command: "".to_string(),
+            arguments: vec![],
+            environment_variables_override: Some(HashMap::new()),
+            stdout_stored_to: None,
+            stdout_storage_options: None,
+            interpreter: None,
+            retry: 0,
+        }
+    }
 }
