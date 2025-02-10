@@ -187,7 +187,7 @@ impl Program {
         if let Some(options) = &self.failure_handling_options {
             if !options.continue_on_failure {
                 error!("{}", error_message);
-                panic!();
+                std::process::exit(1);
             }
         }
     }
