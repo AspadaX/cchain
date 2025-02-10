@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::Display, str::FromStr};
+use std::{collections::HashMap, str::FromStr};
 
 use anyhow::Error;
 use log::{error, info, warn};
@@ -19,7 +19,26 @@ pub enum Interpreter {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct StdoutStorageOptions {
-    pub without_newline_characters: Option<bool>
+    pub without_newline_characters: bool
+}
+
+impl Default for StdoutStorageOptions {
+    fn default() -> Self {
+        Self {
+            without_newline_characters: true
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct FailureHandlingOptions {
+    pub continue_on_failure: bool,
+}
+
+impl Default for FailureHandlingOptions {
+    fn default() -> Self {
+        Self { continue_on_failure: false }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -41,6 +60,8 @@ pub struct Program {
     /// Allow for declaring the type of interpreter to use when 
     /// running a command.
     interpreter: Option<Interpreter>,
+    /// Failure handling options
+    failure_handling_options: Option<FailureHandlingOptions>,
     /// Retry policy for executing the command.
     ///
     /// Use -1 to retry indefinitely, or any non-negative value to specify
@@ -56,6 +77,7 @@ impl Program {
         stdout_stored_to: Option<String>,
         stdout_storage_options: Option<StdoutStorageOptions>,
         interpreter: Option<Interpreter>,
+        failure_handling_options: Option<FailureHandlingOptions>,
         retry: i32,
     ) -> Self {
         Program {
@@ -65,6 +87,7 @@ impl Program {
             stdout_stored_to,
             stdout_storage_options,
             interpreter,
+            failure_handling_options,
             retry,
         }
     }
@@ -153,15 +176,20 @@ impl Program {
     /// In-place operation on the stdout string. 
     /// Directly apply the stdout storage options.
     fn apply_stdout_storage_options(&self, stdout_string: &mut String) {
-
         if let Some(options) = &self.stdout_storage_options {
-            if let Some(without_newline_characters) = options.without_newline_characters {
-                if without_newline_characters {
-                    *stdout_string = stdout_string.trim_matches('\n').to_string();
-                }
+            if options.without_newline_characters {
+                *stdout_string = stdout_string.trim_matches('\n').to_string();
             }
         }
+    }
 
+    fn apply_failure_handling_options(&self, error_message: String) {
+        if let Some(options) = &self.failure_handling_options {
+            if options.continue_on_failure {
+                error!("{}", error_message);
+                panic!();
+            }
+        }
     }
 }
 
@@ -215,9 +243,13 @@ impl Execution for Program {
             output_stdout = out;
 
             if !status.success() && self.get_retry() != &-1 && &attempts >= self.get_retry() {
-                error!("Failed to execute {}: {}", self.get_execution_type(), &self);
+                let error_message: String = format!(
+                    "Failed to execute {}: {}", self.get_execution_type(), &self
+                );
                 info!("Process output:\n{}", output_stdout);
+
                 self.apply_stdout_storage_options(&mut output_stdout);
+                self.apply_failure_handling_options(error_message);
 
                 return Ok(output_stdout);
             }
@@ -244,13 +276,14 @@ impl Execution for Program {
 
         // If retry is set to 0, we shouldn’t retry.
         if !status.success() && self.get_retry() == &0 {
-            error!(
+            let error_message: String = format!(
                 "Failed to execute {}: {}\n",
                 self.get_execution_type(),
                 &self
             );
             info!("Process output:\n{}", output_stdout);
             self.apply_stdout_storage_options(&mut output_stdout);
+            self.apply_failure_handling_options(error_message);
 
             return Ok(output_stdout);
         }
@@ -316,6 +349,7 @@ impl Default for Program {
             stdout_stored_to: None,
             stdout_storage_options: None,
             interpreter: None,
+            failure_handling_options: Some(FailureHandlingOptions::default()),
             retry: 0,
         }
     }

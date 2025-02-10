@@ -7,6 +7,9 @@
     },
     "stdout_stored_to": "<<env_var_output>>",
     "interpreter": "sh",
+    "failure_handling_options": {
+      "continue_on_failure": true
+    },
     "retry": 0
   },
   {
