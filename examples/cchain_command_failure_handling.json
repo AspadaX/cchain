@@ -1,12 +1,15 @@
 [
   {
-    "command": "echo",
+    "command": "non-exist-command",
     "arguments": ["$<<env_var_name>>"],
     "environment_variables_override": {
       "hello": "world"
     },
     "stdout_stored_to": "<<env_var_output>>",
     "interpreter": "sh",
+    "failure_handling_options": {
+      "exit_on_failure": false
+    },
     "retry": 0
   },
   {
