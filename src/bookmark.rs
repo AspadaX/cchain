@@ -1,6 +1,5 @@
 use anyhow::{Error, Result};
 use dirs;
-use log::debug;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -15,12 +14,8 @@ impl Bookmark {
 
         if bookmark_path.exists() {
             let bookmark_file = std::fs::read_to_string(&bookmark_path).unwrap();
-            debug!("Bookmark was found at {}", &bookmark_path.display());
-            debug!("Loading the existing bookmark...");
             serde_json::from_str(&bookmark_file).unwrap()
         } else {
-            debug!("Bookmark was not found at {}", &bookmark_path.display());
-            debug!("Creating a new bookmark...");
             Bookmark {
                 configuration_paths: Vec::new(),
                 bookmark_path: bookmark_path.to_string_lossy().into_owned(),
@@ -32,8 +27,6 @@ impl Bookmark {
         let bookmark_file: String = serde_json::to_string(&self).unwrap();
 
         std::fs::write(&self.bookmark_path, bookmark_file).unwrap();
-
-        debug!("Bookmark has been saved to {}", &self.bookmark_path);
     }
 
     pub fn bookmark_configuration(&mut self, configuration_path: String) -> Result<(), Error> {

@@ -2,22 +2,15 @@ use std::fs::canonicalize;
 
 use anyhow::{Error, Result};
 use cchain::command::Arguments;
+use cchain::display_control::{display_message, Level};
 use cchain::utility::{
     configuration_selection, generate_template, resolve_cchain_configuration_filepaths, Execution,
 };
 use cchain::{bookmark::Bookmark, chain::Chain};
 use clap::Parser;
-use log::{error, info, warn};
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    // Setup a logger
-    simple_logger::SimpleLogger::new()
-        .env()
-        .with_level(log::LevelFilter::Info)
-        .init()
-        .unwrap();
-
     // Parse command line arguments
     let mut arguments = Arguments::parse();
 
@@ -35,7 +28,9 @@ async fn main() -> Result<(), Error> {
             match resolve_cchain_configuration_filepaths(std::path::Path::new(files_path)) {
                 Ok(filepaths) => Some(filepaths),
                 Err(e) => {
-                    error!("{}", e);
+                    display_message(
+                        Level::Error, &e.to_string()
+                    );
                     std::process::exit(1);
                 }
             }
@@ -60,9 +55,12 @@ async fn main() -> Result<(), Error> {
 
         bookmark.save();
 
-        info!(
-            "Bookmark at {} is removed from the collection.",
-            selected_configuration
+        display_message(
+            Level::Warn, 
+            &format!(
+                "Bookmark at {} is removed from the collection.",
+                selected_configuration
+            )
         );
 
         return Ok(());
@@ -82,7 +80,10 @@ async fn main() -> Result<(), Error> {
     if arguments.bookmark {
         // Ensure that both configuration_file and configuration_files flags are not set simultaneously
         if arguments.configuration_file.is_some() && arguments.configuration_files.is_some() {
-            error!("Cannot set both configuration_file and configuration_files flags");
+            display_message(
+                Level::Error, 
+                "Cannot set both configuration_file and configuration_files flags"
+            );
             return Err(Error::msg(
                 "Cannot set both configuration_file and configuration_files flags",
             ));
@@ -90,30 +91,45 @@ async fn main() -> Result<(), Error> {
 
         // Register the single configuration file path to the bookmark if configuration_file is set
         if let Some(filepath) = &arguments.configuration_file {
-            info!(
-                "Registering single configuration file path to the bookmark: {}",
-                filepath
+            display_message(
+                Level::Logging, 
+                &format!(
+                    "Registering single configuration file path to the bookmark: {}",
+                    filepath
+                )
             );
             bookmark.bookmark_configuration(filepath.clone())?;
         }
         // Register multiple configuration file paths to the bookmark if configuration_files is set
         else if let Some(filepaths) = configuration_filepaths {
-            info!("Registering multiple configuration file paths to the bookmark");
+            display_message(
+                Level::Logging,
+                "Registering multiple configuration file paths to the bookmark"
+            );
             for filepath in filepaths {
                 match bookmark.bookmark_configuration(filepath.clone()) {
                     Ok(_) => {
-                        info!("{} is registered successfully.", filepath);
+                        display_message(
+                            Level::Logging,
+                            &format!("{} is registered successfully.", filepath)
+                        );
                         continue;
                     }
                     Err(error) => {
-                        warn!("{}, skipped bookmarking.", error.to_string());
+                        display_message(
+                            Level::Warn, 
+                            &format!("{}, skipped bookmarking.", error.to_string())
+                        );
                         continue;
                     }
                 };
             }
         }
 
-        info!("Bookmark registration is done.");
+        display_message(
+            Level::Logging, 
+            "Bookmark registration is done."
+        );
         bookmark.save();
         return Ok(());
     }
@@ -126,7 +142,10 @@ async fn main() -> Result<(), Error> {
         if let Some(filepaths) = configuration_filepaths {
             configuration_selection(filepaths)
         } else {
-            error!("No configuration file or file paths provided");
+            display_message(
+                Level::Error, 
+                "No configuration file or file paths provided"
+            );
             std::process::exit(1);
         }
     };

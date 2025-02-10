@@ -1,13 +1,11 @@
 use std::{collections::HashMap, str::FromStr};
 
 use anyhow::{anyhow, Error};
-use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncBufReadExt, BufReader};
 
 use crate::{
-    utility::{Execution, ExecutionType},
-    variable::Variable,
+    display_control::{display_message, Level}, utility::{Execution, ExecutionType}, variable::Variable
 };
 
 /// Currently supported interpreters
@@ -185,7 +183,7 @@ impl Program {
 
     fn apply_failure_handling_options(&self, error_message: String) -> Result<(), Error> {
         if self.failure_handling_options.exit_on_failure {
-            error!("{}", error_message);
+            display_message(Level::Error, &error_message);
             return Err(anyhow!("{}", error_message));
         }
 
@@ -232,11 +230,14 @@ impl Execution for Program {
         // Retry loop for a fixed number of attempts (or unlimited if retry == -1)
         while !status.success() && (self.get_retry() == &-1 || &attempts < self.get_retry()) {
             attempts += 1;
-            warn!(
-                "Retrying {}: {}, attempt: {}",
-                self.get_execution_type(),
-                &self,
-                attempts
+            display_message(
+                Level::Warn, 
+                &format!(
+                    "Retrying {}: {}, attempt: {}",
+                    self.get_execution_type(),
+                    &self,
+                    attempts
+                )
             );
             let (s, out) = run_attempt(self).await;
             status = s;
@@ -246,7 +247,10 @@ impl Execution for Program {
                 let error_message: String = format!(
                     "Failed to execute {}: {}", self.get_execution_type(), &self
                 );
-                info!("Process output:\n{}", output_stdout);
+                display_message(
+                    Level::ProgramOutput, 
+                    &format!("Process output:\n{}", output_stdout)
+                );
 
                 self.apply_stdout_storage_options(&mut output_stdout);
 
@@ -262,11 +266,14 @@ impl Execution for Program {
         if !status.success() && self.get_retry() == &-1 {
             loop {
                 attempts += 1;
-                warn!(
-                    "Retrying {}: {}, attempt: {}",
-                    self.get_execution_type(),
-                    &self,
-                    attempts
+                display_message(
+                    Level::Warn, 
+                    &format!(
+                        "Retrying {}: {}, attempt: {}",
+                        self.get_execution_type(),
+                        &self,
+                        attempts
+                    )
                 );
                 let (s, out) = run_attempt(self).await;
                 status = s;
@@ -284,7 +291,10 @@ impl Execution for Program {
                 self.get_execution_type(),
                 &self
             );
-            info!("Process output:\n{}", output_stdout);
+            display_message(
+                Level::ProgramOutput, 
+                &format!("Process output:\n{}", output_stdout)
+            );
             self.apply_stdout_storage_options(&mut output_stdout);
 
             if let Err(result) = self.apply_failure_handling_options(error_message) {
@@ -295,9 +305,10 @@ impl Execution for Program {
         }
 
         // Log separation / final output, using the collected output as needed.
-        info!("===============================");
-        info!("Finished executing command: {}", &self);
-        info!("===============================");
+        display_message(
+            Level::Logging, 
+            &format!("Finished executing command: {}", &self)
+        );
 
         self.apply_stdout_storage_options(&mut output_stdout);
 

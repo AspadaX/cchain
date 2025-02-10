@@ -1,12 +1,9 @@
 use std::io::Write;
 
 use anyhow::{anyhow, Error, Result};
-use log::info;
 
 use crate::{
-    program::Program,
-    utility::{execute_argument_function, Execution, ExecutionType},
-    variable::{Variable, VariableGroupControl, VariableInitializationTime},
+    display_control::{display_message, Level}, program::Program, utility::{execute_argument_function, Execution, ExecutionType}, variable::{Variable, VariableGroupControl, VariableInitializationTime}
 };
 
 pub struct Chain {
@@ -99,9 +96,12 @@ impl Execution for Chain {
         // See if any program needs input on startup
         for variable in &mut self.variables {
             if variable.get_initialization_time() == VariableInitializationTime::OnChainStartup {
-                info!(
-                    "Please input a value for {}:",
-                    variable.get_human_readable_name()
+                display_message(
+                    Level::Logging, 
+                    &format!(
+                        "Please input a value for {}:",
+                        variable.get_human_readable_name()
+                    )
                 );
                 let mut input = String::new();
                 std::io::stdout().flush().expect("Failed to flush stdout");
