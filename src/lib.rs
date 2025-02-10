@@ -5,3 +5,4 @@ pub mod function;
 pub mod program;
 pub mod utility;
 pub mod variable;
+pub mod display_control;

@@ -4,8 +4,9 @@ use std::fs::DirEntry;
 use std::str::FromStr;
 
 use anyhow::{Error, Result};
-use log::{error, info};
 
+use crate::display_control::display_message;
+use crate::display_control::Level;
 use crate::function;
 use crate::program::FailureHandlingOptions;
 use crate::program::Interpreter;
@@ -40,18 +41,30 @@ fn get_paths(path: &std::path::Path) -> Vec<DirEntry> {
 /// A `String` representing the path to the selected configuration file.
 pub fn configuration_selection(paths: Vec<String>) -> String {
     if paths.is_empty() {
-        error!("No configuration files provided in the paths argument");
+        display_message(
+            Level::Error, 
+            "No configuration files provided in the paths argument"
+        );
         std::process::exit(1);
     }
 
     // List available configuration files for the user to select
-    info!("Available configuration files:");
+    display_message(
+        Level::Logging, 
+        "Available configuration files:"
+    );
     for (i, path) in paths.iter().enumerate() {
-        info!("     {}: {}", i, path);
+        display_message(
+            Level::Selection, 
+        &format!("{}: {}", i, path)
+        );
     }
 
     // Prompt the user to select a configuration file
-    info!("Please select a configuration file by entering the corresponding number:");
+    display_message(
+        Level::Logging, 
+        "Please select a configuration file by entering the corresponding number:"
+    );
     let mut selection = String::new();
     std::io::stdin()
         .read_line(&mut selection)
@@ -95,7 +108,10 @@ pub fn generate_template() {
         serde_json::to_string_pretty(&template).expect("Failed to serialize template");
     // Write the template JSON to a file
     std::fs::write("cchain_template.json", template_json).expect("Failed to write template file");
-    info!("Template configuration file generated: cchain_template.json");
+    display_message(
+        Level::Logging, 
+        "Template configuration file generated: cchain_template.json"
+    );
 }
 
 /// Executes functions specified in the configuration arguments.
@@ -122,16 +138,25 @@ pub async fn execute_argument_function(configuration: &mut Program) -> Result<()
             Err(_) => continue, // If parsing fails, skip to the next argument
         };
 
-        info!(
-            "Detected function, {}, when executing command: {}, executing the function...",
-            function.get_name(),
-            configuration
+        display_message(
+            Level::Logging, 
+            &format!(
+                "Detected function, {}, when executing command: {}, executing the function...",
+                function.get_name(),
+                configuration
+            )
         );
 
         // Execute the function asynchronously and await the result
         let result: String = function.execute().await?;
         configuration.revise_argument(index, result);
-        info!("Function, {}, executed successfully", function.get_name());
+        display_message(
+            Level::Logging, 
+            &format!(
+                "Function, {}, executed successfully", 
+                function.get_name()
+            )
+        );
     }
     // Return the result of the function execution
     Ok(())

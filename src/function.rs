@@ -8,8 +8,9 @@ use async_openai::{
     },
     Client,
 };
-use log::info;
 use regex;
+
+use crate::display_control::{display_message, Level};
 
 pub struct Function {
     name: String,
@@ -136,13 +137,19 @@ impl Function {
                         anyhow::bail!("Failed to execute function: {}", e);
                     }
                 };
-
-            info!(
-                "Function executed successfully with result: {}",
-                response.choices[0].clone().message.content.unwrap()
+            
+            display_message(
+                Level::ProgramOutput, 
+                &format!(
+                    "Function executed successfully with result: {}",
+                    response.choices[0].clone().message.content.unwrap()
+                )
             );
 
-            info!("Do you want to proceed with this result? (yes/retry/abort)");
+            display_message(
+                Level::Logging, 
+                "Do you want to proceed with this result? (yes/retry/abort)"
+            );
 
             let mut user_input = String::new();
             std::io::stdin()
@@ -164,7 +171,10 @@ impl Function {
                     anyhow::bail!("Execution aborted by the user");
                 }
                 _ => {
-                    info!("Invalid input, please enter 'yes', 'retry', or 'abort'.");
+                    display_message(
+                        Level::Warn,
+                        "Invalid input, please enter 'yes', 'retry', or 'abort'."
+                    );
                 }
             }
         }
