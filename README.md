@@ -1,7 +1,3 @@
-Here’s a revised version of your README that incorporates the promotional arguments and improves clarity and structure:
-
----
-
 # cchain
 
 ## Overview
