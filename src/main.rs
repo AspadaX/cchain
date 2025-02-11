@@ -1,7 +1,7 @@
 use std::fs::canonicalize;
 
 use anyhow::{Error, Result};
-use cchain::command::Arguments;
+use cchain::arguments::Arguments;
 use cchain::display_control::{display_message, Level};
 use cchain::utility::{
     configuration_selection, generate_template, resolve_cchain_configuration_filepaths, Execution,

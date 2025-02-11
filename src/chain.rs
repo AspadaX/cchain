@@ -3,7 +3,7 @@ use std::io::Write;
 use anyhow::{anyhow, Error, Result};
 
 use crate::{
-    display_control::{display_message, Level}, program::Program, utility::{execute_argument_function, Execution, ExecutionType}, variable::{Variable, VariableGroupControl, VariableInitializationTime}
+    display_control::{display_message, Level}, cli::Program, utility::{execute_argument_function, Execution, ExecutionType}, variable::{Variable, VariableGroupControl, VariableInitializationTime}
 };
 
 pub struct Chain {

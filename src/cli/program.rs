@@ -2,50 +2,17 @@ use std::{collections::HashMap, str::FromStr};
 
 use anyhow::{anyhow, Error};
 use serde::{Deserialize, Serialize};
-use tokio::io::{AsyncBufReadExt, BufReader};
 
 use crate::{
-    display_control::{display_message, Level}, utility::{Execution, ExecutionType}, variable::Variable
+    commons::utility::run_attempt, display_control::{display_message, Level}, variable::Variable
 };
 
-/// Currently supported interpreters
-#[derive(Debug, Deserialize, Serialize, Eq, PartialEq, PartialOrd)]
-pub enum Interpreter {
-    #[serde(alias = "sh")]
-    Sh,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct StdoutStorageOptions {
-    pub without_newline_characters: bool
-}
-
-impl Default for StdoutStorageOptions {
-    fn default() -> Self {
-        Self {
-            without_newline_characters: true
-        }
-    }
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct FailureHandlingOptions {
-    pub exit_on_failure: bool,
-}
-
-impl Default for FailureHandlingOptions {
-    fn default() -> Self {
-        Self { exit_on_failure: true }
-    }
-}
+use super::{command::CommandLine, interpreter::Interpreter, options::{FailureHandlingOptions, StdoutStorageOptions}, traits::{Execution, ExecutionType}};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Program {
-    /// The command to execute.
-    /// This should be the path or name of the program.
-    command: String,
-    /// A list of arguments to pass to the program.
-    arguments: Vec<String>,
+    #[serde(flatten)]
+    command_line: CommandLine,
     /// Optional environment variable overrides.
     /// Each entry maps a variable name to its override value for this
     /// execution.
@@ -56,9 +23,6 @@ pub struct Program {
     /// Additional conditions when storaging the stdout to a variable
     #[serde(default)]
     stdout_storage_options: StdoutStorageOptions,
-    /// Allow for declaring the type of interpreter to use when 
-    /// running a command.
-    interpreter: Option<Interpreter>,
     /// Failure handling options
     #[serde(default)]
     failure_handling_options: FailureHandlingOptions,
@@ -81,12 +45,10 @@ impl Program {
         retry: i32,
     ) -> Self {
         Program {
-            command,
-            arguments,
+            command_line: CommandLine::new(command, arguments, interpreter),
             environment_variables_override,
             stdout_stored_to,
             stdout_storage_options,
-            interpreter,
             failure_handling_options,
             retry,
         }
@@ -107,7 +69,7 @@ impl Program {
     /// Returns `Ok(())` if all variables are inserted successfully, or an `Error` if any variable's
     /// value retrieval fails.
     pub fn insert_variable(&mut self, variables: &Vec<Variable>) -> Result<(), Error> {
-        for argument in self.arguments.iter_mut() {
+        for argument in self.command_line.get_arguments().iter_mut() {
             for variable in variables {
                 if argument.contains(variable.get_raw_variable_name().as_str()) {
                     *argument = argument.replace(
@@ -121,52 +83,8 @@ impl Program {
         Ok(())
     }
 
-    pub fn revise_argument(&mut self, argument_index: usize, new_argument: String) {
-        self.arguments[argument_index] = new_argument;
-    }
-
-    pub fn get_command(&self) -> &str {
-        &self.command
-    }
-
-    pub fn get_arguments(&self) -> &Vec<String> {
-        &self.arguments
-    }
-
     pub fn get_retry(&self) -> &i32 {
         &self.retry
-    }
-
-    /// Constructs a Tokio process command to execute the configured program.
-    ///
-    /// It determines the interpreter to use based on the user specification. 
-    ///
-    /// Additionally, if the `environment_variables_override` field is set, its environment variables
-    /// are applied to the command.
-    pub fn get_process_command(&self) -> tokio::process::Command {
-        let mut command: tokio::process::Command = match self.interpreter {
-            Some(Interpreter::Sh) => {
-                // Use `sh` if the user has specified. 
-                let mut cmd = tokio::process::Command::new("sh");
-                let command_line: String =
-                    format!("{} {}", self.get_command(), self.get_arguments().join(" "));
-                cmd.arg("-c").arg(command_line);
-                cmd
-            },
-            _ => {
-                // On non-Unix systems, execute the command directly.
-                let mut cmd = tokio::process::Command::new(self.get_command());
-                cmd.args(self.get_arguments());
-                cmd
-            }
-        };
-
-        // Override environment variables if provided.
-        if let Some(ref env_vars) = self.environment_variables_override {
-            command.envs(env_vars);
-        }
-
-        command
     }
 
     pub fn get_awaitable_variable(&self) -> &Option<String> {
@@ -193,7 +111,7 @@ impl Program {
 
 impl std::fmt::Display for Program {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} {}", self.command, self.arguments.join(" "))
+        write!(f, "{}", self.command_line)
     }
 }
 
@@ -209,11 +127,12 @@ impl FromStr for Program {
         let command = parts[0].to_string();
         let arguments = parts[1..].iter().map(|s| s.to_string()).collect();
 
-        Ok(Self {
-            command,
-            arguments,
+        Ok(
+            Self {
+            command_line: CommandLine::new(command, arguments, None),
             ..Default::default()
-        })
+            }
+        )
     }
 }
 
@@ -316,56 +235,13 @@ impl Execution for Program {
     }
 }
 
-// A helper async function that spawns the process,
-// concurrently streams stdout to the terminal (via println!) and
-// collects it into a String.
-async fn run_attempt(program: &mut Program) -> (std::process::ExitStatus, String) {
-    let mut command = program.get_process_command();
-
-    // Set stdout to piped so that we can capture it
-    command.stdout(std::process::Stdio::piped());
-
-    // Spawn the process
-    let mut child = command.spawn().expect(&format!(
-        "Failed to execute {}",
-        program.get_execution_type()
-    ));
-
-    // Take the stdout handle
-    let stdout = child.stdout.take().expect("Failed to capture stdout");
-
-    // Spawn a concurrent task to read and print the output live
-    let reader_handle = tokio::spawn(async move {
-        let mut collected_output = String::new();
-        // Wrap stdout in a BufReader and read it line by line
-        let mut reader = BufReader::new(stdout).lines();
-        while let Ok(Some(line)) = reader.next_line().await {
-            // Print output live to the screen
-            println!("{}", line);
-            // Append to the collected output variable (plus a newline)
-            collected_output.push_str(&line);
-            collected_output.push('\n');
-        }
-        collected_output
-    });
-
-    // Wait until child terminates (the output task will eventually finish as well)
-    let status = child.wait().await.expect("Failed to wait on child");
-    // Await the reader task to get the collected stdout contents.
-    let collected = reader_handle.await.expect("Reader task panicked");
-
-    (status, collected)
-}
-
 impl Default for Program {
     fn default() -> Self {
         Self {
-            command: "".to_string(),
-            arguments: vec![],
+            command_line: CommandLine::default(),
             environment_variables_override: Some(HashMap::new()),
             stdout_stored_to: None,
             stdout_storage_options: StdoutStorageOptions::default(),
-            interpreter: None,
             failure_handling_options: FailureHandlingOptions::default(),
             retry: 0,
         }

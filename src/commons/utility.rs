@@ -4,14 +4,16 @@ use std::fs::DirEntry;
 use std::str::FromStr;
 
 use anyhow::{Error, Result};
+use tokio::io::{AsyncBufReadExt, BufReader};
 
+use crate::cli::command::CommandLine;
+use crate::cli::interpreter::Interpreter;
+use crate::cli::options::FailureHandlingOptions;
+use crate::cli::options::StdoutStorageOptions;
+use crate::cli::program::Program;
 use crate::display_control::display_message;
 use crate::display_control::Level;
 use crate::function;
-use crate::program::FailureHandlingOptions;
-use crate::program::Interpreter;
-use crate::program::Program;
-use crate::program::StdoutStorageOptions;
 
 fn get_paths(path: &std::path::Path) -> Vec<DirEntry> {
     let mut paths: Vec<DirEntry> = Vec::new();
@@ -126,7 +128,7 @@ pub fn generate_template() {
 /// # Returns
 ///
 /// A `Result` indicating the success or failure of the function execution.
-pub async fn execute_argument_function(configuration: &mut Program) -> Result<(), Error> {
+pub async fn execute_argument_function(configuration: &mut CommandLine) -> Result<(), Error> {
     // Iterate over each argument in the configuration
     for index in 0..configuration.get_arguments().len() {
         // Clone the current argument
@@ -188,28 +190,43 @@ pub fn resolve_cchain_configuration_filepaths(
     Ok(json_paths)
 }
 
-pub enum ExecutionType {
-    Chain,
-    Program,
-    Function,
-}
+// A helper async function that spawns the process,
+// concurrently streams stdout to the terminal (via println!) and
+// collects it into a String.
+pub async fn run_attempt(program: &mut CommandLine) -> (std::process::ExitStatus, String) {
+    let mut command = program.get_process_command();
 
-impl std::fmt::Display for ExecutionType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ExecutionType::Chain => f.write_str("Chain"),
-            ExecutionType::Program => f.write_str("Program"),
-            ExecutionType::Function => f.write_str("Function"),
+    // Set stdout to piped so that we can capture it
+    command.stdout(std::process::Stdio::piped());
+
+    // Spawn the process
+    let mut child = command.spawn().expect(&format!(
+        "Failed to execute {}",
+        program.get_execution_type()
+    ));
+
+    // Take the stdout handle
+    let stdout = child.stdout.take().expect("Failed to capture stdout");
+
+    // Spawn a concurrent task to read and print the output live
+    let reader_handle = tokio::spawn(async move {
+        let mut collected_output = String::new();
+        // Wrap stdout in a BufReader and read it line by line
+        let mut reader = BufReader::new(stdout).lines();
+        while let Ok(Some(line)) = reader.next_line().await {
+            // Print output live to the screen
+            println!("{}", line);
+            // Append to the collected output variable (plus a newline)
+            collected_output.push_str(&line);
+            collected_output.push('\n');
         }
-    }
-}
+        collected_output
+    });
 
-/// Anything that can be executed
-pub trait Execution
-where
-    Self: std::fmt::Display,
-{
-    fn get_execution_type(&self) -> &ExecutionType;
+    // Wait until child terminates (the output task will eventually finish as well)
+    let status = child.wait().await.expect("Failed to wait on child");
+    // Await the reader task to get the collected stdout contents.
+    let collected = reader_handle.await.expect("Reader task panicked");
 
-    async fn execute(&mut self) -> Result<String, Error>;
+    (status, collected)
 }
