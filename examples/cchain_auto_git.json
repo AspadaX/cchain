@@ -7,6 +7,13 @@
   {
     "command": "git",
     "arguments": ["commit", "-m", "llm_generate('based on the below git diff output, summarize the changes in a few sentences.', 'git --no-pager diff --staged')"],
+    "failure_handling_options": {
+      "exit_on_failure": true,
+      "remedy_command_line": {
+        "command": "git",
+        "arguments": ["reset"]
+      }
+    },
     "retry": 0
   },
   {

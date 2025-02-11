@@ -2,7 +2,6 @@ pub mod bookmark;
 pub mod chain;
 pub mod arguments;
 pub mod function;
-pub mod utility;
 pub mod variable;
 pub mod display_control;
 pub mod cli;

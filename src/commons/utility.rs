@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use std::fs::canonicalize;
 use std::fs::DirEntry;
+use std::io::Write;
 use std::str::FromStr;
 
 use anyhow::{Error, Result};
-use tokio::io::{AsyncBufReadExt, BufReader};
 
 use crate::cli::command::CommandLine;
 use crate::cli::interpreter::Interpreter;
@@ -116,54 +116,6 @@ pub fn generate_template() {
     );
 }
 
-/// Executes functions specified in the configuration arguments.
-///
-/// This function iterates over each argument in the configuration, attempts to parse it as a function,
-/// and if successful, executes the function asynchronously.
-///
-/// # Arguments
-///
-/// * `configuration` - A mutable reference to the `Configuration` struct containing the arguments.
-///
-/// # Returns
-///
-/// A `Result` indicating the success or failure of the function execution.
-pub async fn execute_argument_function(configuration: &mut CommandLine) -> Result<(), Error> {
-    // Iterate over each argument in the configuration
-    for index in 0..configuration.get_arguments().len() {
-        // Clone the current argument
-        let argument: String = configuration.get_arguments()[index].clone();
-
-        // Attempt to parse the argument as a function
-        let function: function::Function = match function::Function::from_str(&argument) {
-            Ok(f) => f,
-            Err(_) => continue, // If parsing fails, skip to the next argument
-        };
-
-        display_message(
-            Level::Logging, 
-            &format!(
-                "Detected function, {}, when executing command: {}, executing the function...",
-                function.get_name(),
-                configuration
-            )
-        );
-
-        // Execute the function asynchronously and await the result
-        let result: String = function.execute().await?;
-        configuration.revise_argument(index, result);
-        display_message(
-            Level::Logging, 
-            &format!(
-                "Function, {}, executed successfully", 
-                function.get_name()
-            )
-        );
-    }
-    // Return the result of the function execution
-    Ok(())
-}
-
 /// Collects paths of all JSON files starting with 'cchain_' from the specified directory.
 ///
 /// This function reads the specified directory and collects all files that have a '.json' extension
@@ -190,43 +142,14 @@ pub fn resolve_cchain_configuration_filepaths(
     Ok(json_paths)
 }
 
-// A helper async function that spawns the process,
-// concurrently streams stdout to the terminal (via println!) and
-// collects it into a String.
-pub async fn run_attempt(program: &mut CommandLine) -> (std::process::ExitStatus, String) {
-    let mut command = program.get_process_command();
-
-    // Set stdout to piped so that we can capture it
-    command.stdout(std::process::Stdio::piped());
-
-    // Spawn the process
-    let mut child = command.spawn().expect(&format!(
-        "Failed to execute {}",
-        program.get_execution_type()
-    ));
-
-    // Take the stdout handle
-    let stdout = child.stdout.take().expect("Failed to capture stdout");
-
-    // Spawn a concurrent task to read and print the output live
-    let reader_handle = tokio::spawn(async move {
-        let mut collected_output = String::new();
-        // Wrap stdout in a BufReader and read it line by line
-        let mut reader = BufReader::new(stdout).lines();
-        while let Ok(Some(line)) = reader.next_line().await {
-            // Print output live to the screen
-            println!("{}", line);
-            // Append to the collected output variable (plus a newline)
-            collected_output.push_str(&line);
-            collected_output.push('\n');
-        }
-        collected_output
-    });
-
-    // Wait until child terminates (the output task will eventually finish as well)
-    let status = child.wait().await.expect("Failed to wait on child");
-    // Await the reader task to get the collected stdout contents.
-    let collected = reader_handle.await.expect("Reader task panicked");
-
-    (status, collected)
+pub fn input_message(prompt: &str) -> Result<String, Error> {
+    // display the prompt message for inputting values
+    display_message(Level::Logging, prompt);
+    // collect the input as a string
+    let mut input = String::new();
+    // receive stdin
+    std::io::stdout().flush()?;
+    std::io::stdin().read_line(&mut input)?;
+    
+    Ok(input)
 }

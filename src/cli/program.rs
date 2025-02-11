@@ -3,9 +3,7 @@ use std::{collections::HashMap, str::FromStr};
 use anyhow::{anyhow, Error};
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    commons::utility::run_attempt, display_control::{display_message, Level}, variable::Variable
-};
+use crate::{display_control::{display_message, Level}, function::Function};
 
 use super::{command::CommandLine, interpreter::Interpreter, options::{FailureHandlingOptions, StdoutStorageOptions}, traits::{Execution, ExecutionType}};
 
@@ -13,10 +11,6 @@ use super::{command::CommandLine, interpreter::Interpreter, options::{FailureHan
 pub struct Program {
     #[serde(flatten)]
     command_line: CommandLine,
-    /// Optional environment variable overrides.
-    /// Each entry maps a variable name to its override value for this
-    /// execution.
-    environment_variables_override: Option<HashMap<String, String>>,
     /// Optional variable name where the standard output of the program
     /// will be stored.
     stdout_stored_to: Option<String>,
@@ -45,42 +39,17 @@ impl Program {
         retry: i32,
     ) -> Self {
         Program {
-            command_line: CommandLine::new(command, arguments, interpreter),
-            environment_variables_override,
+            command_line: CommandLine::new(
+                command, 
+                arguments, 
+                interpreter,
+                environment_variables_override,
+            ),
             stdout_stored_to,
             stdout_storage_options,
             failure_handling_options,
             retry,
         }
-    }
-
-    /// Inserts provided variables into the program's arguments.
-    ///
-    /// This method iterates over each argument in the program and replaces occurrences of
-    /// raw variable names with their corresponding values. If retrieving the value of a variable
-    /// fails, it returns an error.
-    ///
-    /// # Arguments
-    ///
-    /// * `variables` - A vector of `Variable` instances whose raw names will be replaced with their values.
-    ///
-    /// # Returns
-    ///
-    /// Returns `Ok(())` if all variables are inserted successfully, or an `Error` if any variable's
-    /// value retrieval fails.
-    pub fn insert_variable(&mut self, variables: &Vec<Variable>) -> Result<(), Error> {
-        for argument in self.command_line.get_arguments().iter_mut() {
-            for variable in variables {
-                if argument.contains(variable.get_raw_variable_name().as_str()) {
-                    *argument = argument.replace(
-                        variable.get_raw_variable_name().as_str(),
-                        &variable.get_value()?,
-                    );
-                }
-            }
-        }
-
-        Ok(())
     }
 
     pub fn get_retry(&self) -> &i32 {
@@ -89,6 +58,21 @@ impl Program {
 
     pub fn get_awaitable_variable(&self) -> &Option<String> {
         &self.stdout_stored_to
+    }
+    
+    pub fn get_command_line(&mut self) -> &mut CommandLine {
+        &mut self.command_line
+    }
+    
+    pub fn get_remedy_command_line(&mut self) -> Option<&mut CommandLine> {
+        if let Some(command_line) = &mut self
+            .failure_handling_options
+            .remedy_command_line 
+        {
+            return Some(command_line);
+        }
+        
+        None
     }
 
     /// In-place operation on the stdout string. 
@@ -105,6 +89,58 @@ impl Program {
             return Err(anyhow!("{}", error_message));
         }
 
+        Ok(())
+    }
+    
+    pub fn get_failure_handling_options(&mut self) -> &mut FailureHandlingOptions {
+        &mut self.failure_handling_options
+    }
+    
+    pub async fn execute_argument_functions(&mut self) -> Result<(), Error> {
+        // Iterate over each argument in the configuration
+        for index in 0..self.command_line.get_arguments().len() {
+            // Clone the current argument
+            let argument: String = self.command_line.get_arguments()[index].clone();
+    
+            // Attempt to parse the argument as a function
+            let function = match Function::from_str(&argument) {
+                Ok(f) => f,
+                Err(_) => continue, // If parsing fails, skip to the next argument
+            };
+    
+            display_message(
+                Level::Logging, 
+                &format!(
+                    "Detected function, {}, when executing command: {}, executing the function...",
+                    function.get_name(),
+                    self.command_line
+                )
+            );
+    
+            // Execute the function asynchronously and await the result
+            let result: String = function.execute().await?;
+            self.command_line.revise_argument_by_index(index, result);
+            display_message(
+                Level::Logging, 
+                &format!(
+                    "Function, {}, executed successfully", 
+                    function.get_name()
+                )
+            );
+        }
+        // Return the result of the function execution
+        Ok(())
+    }
+    
+    /// This method is supposed to be called when the program fails
+    pub async fn execute_remedy_command_line(&mut self) -> Result<(), Error> {
+        if let Some(command_line) = &mut self
+            .failure_handling_options
+            .remedy_command_line
+        {
+            command_line.execute().await?;
+        }
+        
         Ok(())
     }
 }
@@ -129,7 +165,12 @@ impl FromStr for Program {
 
         Ok(
             Self {
-            command_line: CommandLine::new(command, arguments, None),
+            command_line: CommandLine::new(
+                command, 
+                arguments, 
+                None,
+                None
+            ),
             ..Default::default()
             }
         )
@@ -142,96 +183,53 @@ impl Execution for Program {
     }
 
     async fn execute(&mut self) -> Result<String, anyhow::Error> {
-        // First attempt
-        let (mut status, mut output_stdout) = run_attempt(self).await;
-        let mut attempts = 0;
-
-        // Retry loop for a fixed number of attempts (or unlimited if retry == -1)
-        while !status.success() && (self.get_retry() == &-1 || &attempts < self.get_retry()) {
-            attempts += 1;
-            display_message(
-                Level::Warn, 
-                &format!(
-                    "Retrying {}: {}, attempt: {}",
-                    self.get_execution_type(),
-                    &self,
-                    attempts
-                )
-            );
-            let (s, out) = run_attempt(self).await;
-            status = s;
-            output_stdout = out;
-
-            if !status.success() && self.get_retry() != &-1 && &attempts >= self.get_retry() {
-                let error_message: String = format!(
-                    "Failed to execute {}: {}", self.get_execution_type(), &self
-                );
-                display_message(
-                    Level::ProgramOutput, 
-                    &format!("Process output:\n{}", output_stdout)
-                );
-
-                self.apply_stdout_storage_options(&mut output_stdout);
-
-                if let Err(result) = self.apply_failure_handling_options(error_message) {
-                    return Err(result);
-                } else {
-                    return Ok(output_stdout)
-                }
-            }
-        }
-
-        // For an indefinite retry (retry == -1), keep trying until the process succeeds
-        if !status.success() && self.get_retry() == &-1 {
-            loop {
-                attempts += 1;
-                display_message(
-                    Level::Warn, 
-                    &format!(
+        let mut attempts: i32 = 0;
+        // In the case of retry==0 we never retry, so our only chance is the first attempt.
+        // For retry == -1, we reattempt indefinitely.
+        loop {
+            // Attempt execution through the commandline’s execute method.
+            match self.command_line.execute().await {
+                Ok(mut output_stdout) => {
+                    // On success: apply any stdout storage options
+                    self.apply_stdout_storage_options(&mut output_stdout);
+                    display_message(Level::Logging, &format!("Finished executing command: {}", &self));
+                    return Ok(output_stdout);
+                },
+                Err(err) => {
+                    // Increase attempt counter.
+                    attempts += 1;
+                    let warn_msg = format!(
                         "Retrying {}: {}, attempt: {}",
                         self.get_execution_type(),
                         &self,
                         attempts
-                    )
-                );
-                let (s, out) = run_attempt(self).await;
-                status = s;
-                output_stdout = out;
-                if status.success() {
-                    break;
+                    );
+                    display_message(Level::Warn, &warn_msg);
+
+                    // Determine if we should break the retry loop.
+                    // (retry 0 means no retries; any non-negative value means that many attempts;
+                    // -1 means unlimited retries.)
+                    if self.retry == 0 || (self.retry != -1 && attempts >= self.retry) {
+                        let error_message: String = format!(
+                            "Failed to execute {}: {}", 
+                            self.get_execution_type(), 
+                            &self
+                        );
+                        // Optionally display whatever output we have (here we log the error message).
+                        display_message(
+                            Level::ProgramOutput, 
+                            &format!("Process error: {}", err)
+                        );
+                        // No stdout storage options to apply, as no output was captured.
+                        self.execute_remedy_command_line().await?;
+                        // Apply any failure handling options and then return the error.
+                        self.apply_failure_handling_options(error_message)?;
+                        return Err(err);
+                    }
+                    // Otherwise, we loop again.
                 }
             }
         }
-
-        // If retry is set to 0, we shouldn’t retry.
-        if !status.success() && self.get_retry() == &0 {
-            let error_message: String = format!(
-                "Failed to execute {}: {}\n",
-                self.get_execution_type(),
-                &self
-            );
-            display_message(
-                Level::ProgramOutput, 
-                &format!("Process output:\n{}", output_stdout)
-            );
-            self.apply_stdout_storage_options(&mut output_stdout);
-
-            if let Err(result) = self.apply_failure_handling_options(error_message) {
-                return Err(result);
-            } else {
-                return Ok(output_stdout)
-            }
-        }
-
-        // Log separation / final output, using the collected output as needed.
-        display_message(
-            Level::Logging, 
-            &format!("Finished executing command: {}", &self)
-        );
-
-        self.apply_stdout_storage_options(&mut output_stdout);
-
-        Ok(output_stdout)
     }
 }
 
@@ -239,7 +237,6 @@ impl Default for Program {
     fn default() -> Self {
         Self {
             command_line: CommandLine::default(),
-            environment_variables_override: Some(HashMap::new()),
             stdout_stored_to: None,
             stdout_storage_options: StdoutStorageOptions::default(),
             failure_handling_options: FailureHandlingOptions::default(),
