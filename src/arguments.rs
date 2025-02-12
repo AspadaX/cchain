@@ -61,12 +61,16 @@ pub struct AddArguments {
 pub struct ListArguments;
 
 #[derive(Debug, Args)]
-#[command(group = clap::ArgGroup::new("sources").required(true).multiple(true))]
+#[command(group = clap::ArgGroup::new("sources").required(true).multiple(false))]
 pub struct RemoveArguments {
     /// Index to your chain in the bookmark. 
     /// Can be obtained with `cchain list`
     #[arg(group = "sources")]
-    pub index: usize,
+    pub index: Option<usize>,
+    /// Completely reset the bookmark. This is useful
+    /// when `cchain` breaks.
+    #[arg(short, long, group = "sources", default_value = "false")]
+    pub reset: bool,
 }
 
 #[derive(Debug, Parser)]

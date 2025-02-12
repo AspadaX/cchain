@@ -1,6 +1,6 @@
-use std::str::FromStr;
+use std::{path::PathBuf, str::FromStr};
 
-use anyhow::{Error, Result};
+use anyhow::{anyhow, Error, Result};
 use dirs;
 use serde::{Deserialize, Serialize};
 
@@ -15,8 +15,27 @@ pub struct Bookmark {
 }
 
 impl Bookmark {
+    pub fn reset() -> Result<(), Error> {
+        let new_path: PathBuf = dirs::home_dir()
+            .unwrap()
+            .join(".cchain");
+        
+        if new_path.exists() {
+            match std::fs::remove_file(&new_path) {
+                Ok(_) => return Ok(()),
+                Err(error) => return Err(
+                    anyhow!("Failed to delete existing bookmark file: {}", error)
+                )
+            };
+        }
+        
+        Ok(())
+    }
+    
     pub fn from_file() -> Self {
-        let bookmark_path = dirs::home_dir().unwrap().join(".cchain");
+        let bookmark_path = dirs::home_dir()
+            .unwrap()
+            .join(".cchain");
 
         if bookmark_path.exists() {
             let bookmark_file = std::fs::read_to_string(&bookmark_path).unwrap();

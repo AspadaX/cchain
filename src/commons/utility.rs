@@ -30,11 +30,11 @@ pub fn get_paths(path: &std::path::Path) -> Result<Vec<DirEntry>, Error> {
 ///
 /// This function creates a template configuration with example commands and arguments,
 /// serializes it to JSON, and writes it to a file named `cchain_template.json`.
-pub fn generate_template(name: Option<&str>) {
+pub fn generate_template(name: Option<&str>) -> Result<(), Error> {
     let filename = if let Some(name) = name {
-        name
+        "cchain_".to_string() + name + ".json"
     } else {
-        "cchain_template.json"
+        "cchain_template.json".to_string()
     };
 
     // Create a template configuration
@@ -62,13 +62,15 @@ pub fn generate_template(name: Option<&str>) {
     ];
     // Serialize the template to JSON
     let template_json =
-        serde_json::to_string_pretty(&template).expect("Failed to serialize template");
+        serde_json::to_string_pretty(&template)?;
     // Write the template JSON to a file
-    std::fs::write(filename, template_json).expect("Failed to write template file");
+    std::fs::write(&filename, template_json)?;
     display_message(
         Level::Logging, 
-        &format!("Template configuration file generated: {}", filename)
+        &format!("Template chain generated: {}", &filename)
     );
+    
+    Ok(())
 }
 
 pub fn input_message(prompt: &str) -> Result<String, Error> {

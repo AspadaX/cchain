@@ -153,31 +153,38 @@ async fn main() -> Result<(), Error> {
             );
         },
         Commands::Remove(subcommand) => {
-            let reference = match bookmark
-                .get_chain_reference_by_index(subcommand.index) {
-                    Some(result) => result,
-                    None => {
-                        display_message(
-                            Level::Error, 
-                            &format!(
-                                "Bookmark index {} is not found",
-                                subcommand.index
-                            )
-                        );
-                        return Ok(())
-                    }
-                };
-            let reference_name: String = reference.get_chain_path_string();
-            bookmark.remove_chain_reference_by_index(subcommand.index)?;
-            bookmark.save();
-    
-            display_message(
-                Level::Warn, 
-                &format!(
-                    "Bookmark at {} is removed from the collection.",
-                    &reference_name
-                )
-            );
+            if subcommand.reset {
+                Bookmark::reset()?;
+                display_message(Level::Warn, "Bookmark has been reset!");
+            } else {
+                if let Some(index) = subcommand.index {
+                    let reference = match bookmark
+                        .get_chain_reference_by_index(index) {
+                            Some(result) => result,
+                            None => {
+                                display_message(
+                                    Level::Error, 
+                                    &format!(
+                                        "Bookmark index {} is not found",
+                                        index
+                                    )
+                                );
+                                return Ok(())
+                            }
+                        };
+                    let reference_name: String = reference.get_chain_path_string();
+                    bookmark.remove_chain_reference_by_index(index)?;
+                    bookmark.save();
+            
+                    display_message(
+                        Level::Warn, 
+                        &format!(
+                            "Bookmark at {} is removed from the collection.",
+                            &reference_name
+                        )
+                    );
+                }
+            }
     
             return Ok(());
         },
@@ -188,7 +195,7 @@ async fn main() -> Result<(), Error> {
                     "LLM generation feature has not yet implemented. Stay tuned. 😈"
                 );
             }
-            generate_template(subcommand.name.as_deref());
+            generate_template(subcommand.name.as_deref())?;
 
             return Ok(());
         }
