@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 use anyhow::{Result, Error};
-use tokio::{io::{AsyncBufReadExt, BufReader}, task::JoinHandle};
+use tokio::{io::{AsyncBufReadExt, AsyncReadExt, BufReader}, task::JoinHandle};
 
 use crate::display_control::{display_message, Level};
 
@@ -141,14 +141,23 @@ impl Execution for CommandLine {
         let reader_handle: JoinHandle<Result<String, Error>> = tokio::spawn(
             async move {
                 let mut collected_output = String::new();
-                let mut reader = BufReader::new(stdout).lines();
-                while let Ok(Some(line)) = reader.next_line().await {
-                    display_message(
-                        Level::ProgramOutput, 
-                        &format!("{}", line)
-                    );
-                    collected_output.push_str(&line);
-                    collected_output.push('\n');
+                // a reader to get the output bytes
+                let mut reader = BufReader::new(stdout);
+                // temporarily store the buffer in this variable
+                let mut buffer: [u8; 1024] = [0; 1024];
+                loop {
+                    match reader.read(&mut buffer).await {
+                        Ok(0) => break, // EOF
+                        Ok(n) => {
+                            let chunk = &buffer[..n];
+                            let text = String::from_utf8_lossy(chunk);
+                            display_message(Level::ProgramOutput, &text);
+                            collected_output.push_str(&text);
+                        },
+                        Err(error) => return Err(
+                            Error::msg(format!("Failed to read stdout: {}", error))
+                        )
+                    }
                 }
 
                 Ok(collected_output)
