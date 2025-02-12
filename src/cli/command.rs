@@ -123,7 +123,7 @@ impl Execution for CommandLine {
         command.stdout(std::process::Stdio::piped());
         display_message(
             Level::Logging, 
-            &format!("Start executing command {}", &self)
+            &format!("Start executing command: {}", &self)
         );
 
         // Spawn the process
