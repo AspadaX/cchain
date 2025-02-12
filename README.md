@@ -77,6 +77,41 @@ Run `cchain` with the configuration file:
 cchain -c path/to/configuration.json
 ```
 
+### Failure Handling
+
+`cchain` not only supports retry but also additional steps to take when a command line fails to execute. For example, if the LLM call failed when trying to create a commit message, and yo u would like to `git reset` and then perform a new commit after fixing the LLM issue. Then you probably will need this:
+
+```json
+[
+  {
+    "command": "git",
+    "arguments": ["add", "--all"],
+    "retry": 0
+  },
+  {
+    "command": "git",
+    "arguments": ["commit", "-m", "llm_generate('based on the below git diff output, summarize the changes in a few sentences.', 'git --no-pager diff --staged')"],
+    "failure_handling_options": {
+      "exit_on_failure": true,
+      "remedy_command_line": {
+        "command": "git",
+        "arguments": ["reset"]
+      }
+    },
+    "retry": 0
+  },
+  {
+    "command": "git",
+    "arguments": ["push"],
+    "retry": 0
+  }
+]
+```
+
+In the second program of this chain, the key `failure_handling_options` provides two options when this program fails to execute. The `exit_on_failure` specifies whether the chain needs to exit entirely when this program fails. The `remedy_command_line` specifies a command to run when the program fails. 
+
+In this case, we need `cchain` to execute `git reset` if the commit fails. And then, we will need to chain to stop running the subsequential programs to prevent a pointless push. 
+
 ### Environment Variables
 Override environment variables per-command and capture command outputs for reuse:
 ```json
