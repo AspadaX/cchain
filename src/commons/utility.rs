@@ -1,17 +1,19 @@
 use std::collections::HashMap;
 use std::fs::canonicalize;
 use std::fs::DirEntry;
+use std::io::Write;
 use std::str::FromStr;
 
 use anyhow::{Error, Result};
 
+use crate::cli::command::CommandLine;
+use crate::cli::interpreter::Interpreter;
+use crate::cli::options::FailureHandlingOptions;
+use crate::cli::options::StdoutStorageOptions;
+use crate::cli::program::Program;
 use crate::display_control::display_message;
 use crate::display_control::Level;
 use crate::function;
-use crate::program::FailureHandlingOptions;
-use crate::program::Interpreter;
-use crate::program::Program;
-use crate::program::StdoutStorageOptions;
 
 fn get_paths(path: &std::path::Path) -> Vec<DirEntry> {
     let mut paths: Vec<DirEntry> = Vec::new();
@@ -114,54 +116,6 @@ pub fn generate_template() {
     );
 }
 
-/// Executes functions specified in the configuration arguments.
-///
-/// This function iterates over each argument in the configuration, attempts to parse it as a function,
-/// and if successful, executes the function asynchronously.
-///
-/// # Arguments
-///
-/// * `configuration` - A mutable reference to the `Configuration` struct containing the arguments.
-///
-/// # Returns
-///
-/// A `Result` indicating the success or failure of the function execution.
-pub async fn execute_argument_function(configuration: &mut Program) -> Result<(), Error> {
-    // Iterate over each argument in the configuration
-    for index in 0..configuration.get_arguments().len() {
-        // Clone the current argument
-        let argument: String = configuration.get_arguments()[index].clone();
-
-        // Attempt to parse the argument as a function
-        let function: function::Function = match function::Function::from_str(&argument) {
-            Ok(f) => f,
-            Err(_) => continue, // If parsing fails, skip to the next argument
-        };
-
-        display_message(
-            Level::Logging, 
-            &format!(
-                "Detected function, {}, when executing command: {}, executing the function...",
-                function.get_name(),
-                configuration
-            )
-        );
-
-        // Execute the function asynchronously and await the result
-        let result: String = function.execute().await?;
-        configuration.revise_argument(index, result);
-        display_message(
-            Level::Logging, 
-            &format!(
-                "Function, {}, executed successfully", 
-                function.get_name()
-            )
-        );
-    }
-    // Return the result of the function execution
-    Ok(())
-}
-
 /// Collects paths of all JSON files starting with 'cchain_' from the specified directory.
 ///
 /// This function reads the specified directory and collects all files that have a '.json' extension
@@ -188,28 +142,14 @@ pub fn resolve_cchain_configuration_filepaths(
     Ok(json_paths)
 }
 
-pub enum ExecutionType {
-    Chain,
-    Program,
-    Function,
-}
-
-impl std::fmt::Display for ExecutionType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ExecutionType::Chain => f.write_str("Chain"),
-            ExecutionType::Program => f.write_str("Program"),
-            ExecutionType::Function => f.write_str("Function"),
-        }
-    }
-}
-
-/// Anything that can be executed
-pub trait Execution
-where
-    Self: std::fmt::Display,
-{
-    fn get_execution_type(&self) -> &ExecutionType;
-
-    async fn execute(&mut self) -> Result<String, Error>;
+pub fn input_message(prompt: &str) -> Result<String, Error> {
+    // display the prompt message for inputting values
+    display_message(Level::Logging, prompt);
+    // collect the input as a string
+    let mut input = String::new();
+    // receive stdin
+    std::io::stdout().flush()?;
+    std::io::stdin().read_line(&mut input)?;
+    
+    Ok(input)
 }

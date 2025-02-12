@@ -1,6 +1,8 @@
 use anyhow::{anyhow, Error, Ok, Result};
 use regex;
 
+use crate::display_control::display_message;
+
 /// note
 /// three conditions in which the value of a variable is supplied
 /// 1. on the chain's startup.

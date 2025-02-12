@@ -1,10 +1,11 @@
 use std::fs::canonicalize;
 
 use anyhow::{Error, Result};
-use cchain::command::Arguments;
+use cchain::arguments::Arguments;
+use cchain::cli::traits::Execution;
 use cchain::display_control::{display_message, Level};
-use cchain::utility::{
-    configuration_selection, generate_template, resolve_cchain_configuration_filepaths, Execution,
+use cchain::commons::utility::{
+    configuration_selection, generate_template, resolve_cchain_configuration_filepaths,
 };
 use cchain::{bookmark::Bookmark, chain::Chain};
 use clap::Parser;
