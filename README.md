@@ -72,9 +72,9 @@ Create a JSON configuration file to define your command chain. For example:
 ]
 ```
 
-Run `cchain` with the configuration file:
+Run `cchain` with a chain file:
 ```sh
-cchain -c path/to/configuration.json
+cchain run --path path/to/cchain_your_file.json
 ```
 
 ### Failure Handling
@@ -156,12 +156,31 @@ export CCHAIN_OPENAI_MODEL="mistral"
 ### Bookmarking
 Bookmark frequently used command chains for quick access:
 ```sh
-cchain -c path/to/configuration.json -b
+cchain add path/to/cchain_your_file.json
+```
+Or, you may want to add a directory of cchain files
+```sh
+cchain add path/to/a/directory --all
 ```
 
-Delete a bookmark:
+Look up existing bookmarked chains and their indexes
 ```sh
-cchain -r
+cchain list
+```
+
+Run a bookmarked chain by index:
+```sh
+cchain run 0
+```
+
+Delete a bookmark by index:
+```sh
+cchain remove 0
+```
+
+Reset the entire bookmark if needed:
+```sh
+cchain remove --reset
 ```
 
 ---
