@@ -192,7 +192,6 @@ impl Execution for Program {
                 Ok(mut output_stdout) => {
                     // On success: apply any stdout storage options
                     self.apply_stdout_storage_options(&mut output_stdout);
-                    display_message(Level::Logging, &format!("Finished executing command: {}", &self));
                     return Ok(output_stdout);
                 },
                 Err(err) => {

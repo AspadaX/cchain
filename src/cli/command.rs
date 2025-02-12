@@ -121,6 +121,10 @@ impl Execution for CommandLine {
         
         // Set stdout to piped so that we can capture it
         command.stdout(std::process::Stdio::piped());
+        display_message(
+            Level::Logging, 
+            &format!("Start executing command {}", &self)
+        );
 
         // Spawn the process
         let mut child = command.spawn().map_err(|e| {
@@ -181,6 +185,9 @@ impl Execution for CommandLine {
         let collected = reader_handle
             .await
             .map_err(|e| Error::msg(format!("Reader task panicked: {}", e)))??;
+
+        // Display a message when the command finished execution successfully
+        display_message(Level::Logging, &format!("Finished executing command: {}", &self));
 
         Ok(collected)
     }
