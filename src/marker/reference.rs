@@ -71,6 +71,10 @@ impl HumanReadable for ChainReference {
             .collect::<Vec<String>>()
             .join(" ");
 
-        result.trim_start_matches("cchain").to_string()
+        result
+            .trim_start_matches("Cchain")
+            .to_string()
+            .trim_end_matches(".json")
+            .to_string()
     }
 }

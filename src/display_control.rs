@@ -56,7 +56,7 @@ pub fn display_message(
     }
 }
 
-pub fn display_form(column_labels: Vec<&str>, rows: Vec<Vec<&str>>) {
+pub fn display_form(column_labels: Vec<&str>, rows: &Vec<Vec<String>>) {
     let mut table = Table::new();
     let top_line: Vec<Cell> = column_labels
         .iter()

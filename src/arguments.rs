@@ -1,4 +1,4 @@
-use clap::{builder::{styling::{AnsiColor, Effects}, Styles}, Parser, Subcommand};
+use clap::{builder::{styling::{AnsiColor, Effects}, Styles}, Parser, Subcommand, Args};
 
 // Configures Clap v3-style help menu colors
 const STYLES: Styles = Styles::styled()
@@ -33,33 +33,39 @@ pub enum Commands {
     Generate(GenerateArguments)
 }
 
-#[derive(Debug, Parser)]
+#[derive(Debug, Args)]
+#[command(group = clap::ArgGroup::new("sources").required(true).multiple(false))]
 pub struct RunArguments {
-    /// Path to the command line chain
-    #[clap(short, long)]
-    pub chain: Option<String>,
-}
-
-#[derive(Debug, Parser)]
-pub struct AddArguments {
-    /// Path to your chain file or a directory 
-    /// that contains multiple chains
-    #[clap(short, long)]
+    /// Index of the chain
+    #[arg(group = "sources")]
+    pub index: Option<usize>,
+    
+    /// Path to the chain
+    #[arg(long, short, group = "sources")]
     pub path: Option<String>,
 }
 
-pub enum AddMultipleChains {
-
+#[derive(Debug, Args)]
+#[command(group = clap::ArgGroup::new("sources").required(true).multiple(true))]
+pub struct AddArguments {
+    /// Path to your chain file or a directory 
+    /// that contains multiple chains
+    #[arg(group = "sources")]
+    pub path: Option<String>,
+    /// Add all chains under this directory to the bookmark
+    #[arg(long, short, group = "sources", default_value = "false")]
+    pub all: bool,
 }
 
 #[derive(Debug, Parser)]
 pub struct ListArguments;
 
-#[derive(Debug, Parser)]
+#[derive(Debug, Args)]
+#[command(group = clap::ArgGroup::new("sources").required(true).multiple(true))]
 pub struct RemoveArguments {
     /// Index to your chain in the bookmark. 
     /// Can be obtained with `cchain list`
-    #[clap(short, long)]
+    #[arg(group = "sources")]
     pub index: usize,
 }
 
@@ -72,11 +78,6 @@ pub struct GenerateArguments {
 
     /// Generate a command line chain but with LLM
     /// making the chain. Default to `false`.
-    #[clap(short, long, default_value = "default_to_false")]
+    #[clap(short, long, default_value = "false")]
     pub llm: bool,
-}
-
-/// Provide a default value of `false
-pub fn default_to_false() -> bool {
-    false
 }
