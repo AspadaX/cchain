@@ -1,22 +1,120 @@
-use std::fs::canonicalize;
+use std::fs::{canonicalize, DirEntry};
+use std::path::Path;
 
 use anyhow::{Error, Result};
-use cchain::arguments::Arguments;
+use cchain::arguments::*;
 use cchain::cli::traits::Execution;
-use cchain::display_control::{display_message, Level};
+use cchain::commons::naming::HumanReadable;
+use cchain::display_control::{display_form, display_message, Level};
 use cchain::commons::utility::{
-    configuration_selection, generate_template, resolve_cchain_configuration_filepaths,
+    configuration_selection, generate_template, get_paths, resolve_cchain_configuration_filepaths
 };
-use cchain::{bookmark::Bookmark, chain::Chain};
+use cchain::marker::reference::ChainReference;
+use cchain::{marker::bookmark::Bookmark, chain::Chain};
 use clap::Parser;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     // Parse command line arguments
     let mut arguments = Arguments::parse();
-
     // Instantiate the bookmark
     let mut bookmark: Bookmark = Bookmark::from_file();
+
+    // Map the arguments to corresponding code logics
+    match arguments.commands {
+        Commands::Run(subcommand) => {
+            match subcommand.chain {
+                Some(path) => {
+                    // Load and parse the configuration file
+                    let mut chain: Chain = Chain::from_file(&path)?;
+                    // Iterate over each configuration and execute the commands
+                    chain.execute().await?;
+                },
+                None => {
+                    display_message(
+                        Level::Error,
+                        "Please provide a chain path to run"
+                    );
+                }
+            }
+        },
+        Commands::Add(subcommand) => {
+            if let Some(path) = subcommand.path {
+                display_message(
+                    Level::Logging,
+                    "Registering multiple configuration file paths to the bookmark"
+                );
+                let filepaths: Vec<DirEntry> = get_paths(Path::new(&path));
+                for filepath in filepaths {
+                    match bookmark.add_chain_reference(
+                        filepath.path()
+                            .canonicalize()
+                            .unwrap()
+                            .to_string_lossy()
+                            .to_string()) {
+                        Ok(_) => {
+                            display_message(
+                                Level::Logging,
+                                &format!(
+                                    "{} is registered successfully.", 
+                                    filepath.path()
+                                        .canonicalize()
+                                        .unwrap()
+                                        .to_str()
+                                        .unwrap())
+                            );
+                            continue;
+                        }
+                        Err(error) => {
+                            display_message(
+                                Level::Warn, 
+                                &format!("{}, skipped bookmarking.", error.to_string())
+                            );
+                            continue;
+                        }
+                    };
+                }
+
+                display_message(
+                    Level::Logging, 
+                    "Bookmark registration is done."
+                );
+                bookmark.save();
+                return Ok(());
+            }
+        },
+        Commands::List(subcommand) => {
+            let references: &Vec<ChainReference> = &bookmark.get_chain_references();
+            let mut form_data: Vec<Vec<&str>>;
+
+            for reference in references {
+                form_data.push(
+                    vec![
+                        &reference.get_chain_path_string(),
+                        &reference.get_human_readable_name()
+                    ]
+                );
+            }
+
+            display_form(
+                vec!["Name", "Path"], 
+                form_data
+            );
+        },
+        Commands::Remove(subcommand) => {},
+        Commands::Generate(subcommand) => {
+            if subcommand.llm {
+                display_message(
+                    Level::Error, 
+                    "LLM generation feature has not yet implemented. Stay tuned. 😈"
+                );
+            }
+            generate_template(subcommand.name.as_deref());
+
+            return Ok(());
+        }
+    }
+
     // Convert the relative path into absolute for configuration_file
     if let Some(path) = arguments.configuration_file {
         arguments.configuration_file = Some(canonicalize(path)?.to_string_lossy().to_string());
@@ -38,12 +136,6 @@ async fn main() -> Result<(), Error> {
         } else {
             None
         };
-
-    // Check if the generate flag is set, and if so, generate a template configuration file
-    if arguments.generate {
-        generate_template();
-        return Ok(());
-    }
 
     if arguments.delete_bookmark {
         let bookmarked_configuration_filepaths: &Vec<String> =
@@ -102,37 +194,8 @@ async fn main() -> Result<(), Error> {
             bookmark.bookmark_configuration(filepath.clone())?;
         }
         // Register multiple configuration file paths to the bookmark if configuration_files is set
-        else if let Some(filepaths) = configuration_filepaths {
-            display_message(
-                Level::Logging,
-                "Registering multiple configuration file paths to the bookmark"
-            );
-            for filepath in filepaths {
-                match bookmark.bookmark_configuration(filepath.clone()) {
-                    Ok(_) => {
-                        display_message(
-                            Level::Logging,
-                            &format!("{} is registered successfully.", filepath)
-                        );
-                        continue;
-                    }
-                    Err(error) => {
-                        display_message(
-                            Level::Warn, 
-                            &format!("{}, skipped bookmarking.", error.to_string())
-                        );
-                        continue;
-                    }
-                };
-            }
-        }
+        else if let Some(filepaths) = configuration_filepaths {}
 
-        display_message(
-            Level::Logging, 
-            "Bookmark registration is done."
-        );
-        bookmark.save();
-        return Ok(());
     }
 
     // Prompt the user for selecting a configuration file to execute,
@@ -150,12 +213,6 @@ async fn main() -> Result<(), Error> {
             std::process::exit(1);
         }
     };
-
-    // Load and parse the configuration file
-    let mut chain: Chain = Chain::from_file(&configurations_file)?;
-
-    // Iterate over each configuration and execute the commands
-    chain.execute().await?;
 
     Ok(())
 }

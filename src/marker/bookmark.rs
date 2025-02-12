@@ -1,10 +1,16 @@
+use std::str::FromStr;
+
 use anyhow::{Error, Result};
 use dirs;
 use serde::{Deserialize, Serialize};
 
+use super::reference::ChainReference;
+
+/// `Bookmark` is a collection of references to the chains
+/// `ChainRefenence` is a reference to a chain
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Bookmark {
-    configuration_paths: Vec<String>,
+    chain_references: Vec<ChainReference>,
     bookmark_path: String,
 }
 
@@ -17,7 +23,7 @@ impl Bookmark {
             serde_json::from_str(&bookmark_file).unwrap()
         } else {
             Bookmark {
-                configuration_paths: Vec::new(),
+                chain_references: Vec::new(),
                 bookmark_path: bookmark_path.to_string_lossy().into_owned(),
             }
         }
@@ -29,37 +35,43 @@ impl Bookmark {
         std::fs::write(&self.bookmark_path, bookmark_file).unwrap();
     }
 
-    pub fn bookmark_configuration(&mut self, configuration_path: String) -> Result<(), Error> {
-        if self.configuration_paths.contains(&configuration_path) {
+    pub fn add_chain_reference(&mut self, configuration_path: String) -> Result<(), Error> {
+        let chain_reference = ChainReference::from_str(
+            &configuration_path
+        )?;
+        if self.chain_references.contains(&chain_reference) {
             return Err(anyhow::anyhow!(
                 "Configuration is likely duplicated: {}",
-                configuration_path
+                &configuration_path
             ));
         } else {
-            self.configuration_paths.push(configuration_path);
+            self.chain_references.push(chain_reference);
             Ok(())
         }
     }
 
-    pub fn unbookmark_configuration_by_index(&mut self, index: usize) -> Result<(), Error> {
-        if index < self.configuration_paths.len() {
-            self.configuration_paths.remove(index);
+    pub fn remove_chain_reference_by_index(&mut self, index: usize) -> Result<(), Error> {
+        if index < self.chain_references.len() {
+            self.chain_references.remove(index);
             Ok(())
         } else {
             Err(anyhow::anyhow!("Index out of bounds: {}", index))
         }
     }
 
-    pub fn unbookmark_configuration_by_path(
+    pub fn remove_chain_reference_by_path(
         &mut self,
         configuration_path: &str,
     ) -> Result<(), Error> {
+        let chain_reference = ChainReference::from_str(
+            configuration_path
+        )?;
         if let Some(pos) = self
-            .configuration_paths
+            .chain_references
             .iter()
-            .position(|x| x == configuration_path)
+            .position(|x| x == &chain_reference)
         {
-            self.configuration_paths.remove(pos);
+            self.chain_references.remove(pos);
             Ok(())
         } else {
             Err(anyhow::anyhow!(
@@ -69,11 +81,11 @@ impl Bookmark {
         }
     }
 
-    pub fn get_bookmarked_configurations(&self) -> &Vec<String> {
-        &self.configuration_paths
+    pub fn get_chain_references(&self) -> &Vec<ChainReference> {
+        &self.chain_references
     }
 
-    pub fn get_bookmarked_configurations_by_index(&self, index: usize) -> Option<&String> {
-        self.configuration_paths.get(index)
+    pub fn get_chain_reference_by_index(&self, index: usize) -> Option<&ChainReference> {
+        self.chain_references.get(index)
     }
 }

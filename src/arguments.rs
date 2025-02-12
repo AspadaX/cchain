@@ -1,24 +1,82 @@
-use clap::Parser;
+use clap::{builder::{styling::{AnsiColor, Effects}, Styles}, Parser, Subcommand};
+
+// Configures Clap v3-style help menu colors
+const STYLES: Styles = Styles::styled()
+    .header(AnsiColor::Green.on_default().effects(Effects::BOLD))
+    .usage(AnsiColor::Green.on_default().effects(Effects::BOLD))
+    .literal(AnsiColor::Cyan.on_default().effects(Effects::BOLD))
+    .placeholder(AnsiColor::Cyan.on_default());
 
 #[derive(Debug, Parser)]
+#[command(name = "cchain")]
+#[command(about = "A modern CLI automation tool")]
+#[command(styles = STYLES)]
 pub struct Arguments {
-    /// path to the command line chain file
+    /// Groupped features provided by `cchain`
+    #[clap(subcommand)]
+    pub commands: Commands
+}
+
+#[derive(Debug, Subcommand)]
+pub enum Commands {
+    /// Run a chain
+    Run(RunArguments),
+    /// Add chain(s) to your bookmark
+    Add(AddArguments),
+    /// Add chain(s) to your bookmark
+    List(ListArguments),
+    /// Remove chain(s) to your bookmark
+    #[clap(short_flag = 'r')]
+    Remove(RemoveArguments),
+    /// Generate a chain
+    #[clap(short_flag = 'g')]
+    Generate(GenerateArguments)
+}
+
+#[derive(Debug, Parser)]
+pub struct RunArguments {
+    /// Path to the command line chain
     #[clap(short, long)]
-    pub configuration_file: Option<String>,
+    pub chain: Option<String>,
+}
 
-    /// path to the directory containing the command line chain files
-    #[clap(short = 'd', long)]
-    pub configuration_files: Option<String>,
-
-    /// use bookmarked command line chains
+#[derive(Debug, Parser)]
+pub struct AddArguments {
+    /// Path to your chain file or a directory 
+    /// that contains multiple chains
     #[clap(short, long)]
-    pub bookmark: bool,
+    pub path: Option<String>,
+}
 
-    /// delete a bookmark
-    #[clap(short = 'r', long)]
-    pub delete_bookmark: bool,
+pub enum AddMultipleChains {
 
-    /// generate a command line chain template
+}
+
+#[derive(Debug, Parser)]
+pub struct ListArguments;
+
+#[derive(Debug, Parser)]
+pub struct RemoveArguments {
+    /// Index to your chain in the bookmark. 
+    /// Can be obtained with `cchain list`
     #[clap(short, long)]
-    pub generate: bool,
+    pub index: usize,
+}
+
+#[derive(Debug, Parser)]
+pub struct GenerateArguments {
+    /// Name the generated chain, by default,
+    /// it will be a template file. 
+    #[clap(short, long)]
+    pub name: Option<String>,
+
+    /// Generate a command line chain but with LLM
+    /// making the chain. Default to `false`.
+    #[clap(short, long, default_value = "default_to_false")]
+    pub llm: bool,
+}
+
+/// Provide a default value of `false
+pub fn default_to_false() -> bool {
+    false
 }

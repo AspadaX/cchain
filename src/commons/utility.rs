@@ -2,20 +2,17 @@ use std::collections::HashMap;
 use std::fs::canonicalize;
 use std::fs::DirEntry;
 use std::io::Write;
-use std::str::FromStr;
 
 use anyhow::{Error, Result};
 
-use crate::cli::command::CommandLine;
 use crate::cli::interpreter::Interpreter;
 use crate::cli::options::FailureHandlingOptions;
 use crate::cli::options::StdoutStorageOptions;
 use crate::cli::program::Program;
 use crate::display_control::display_message;
 use crate::display_control::Level;
-use crate::function;
 
-fn get_paths(path: &std::path::Path) -> Vec<DirEntry> {
+pub fn get_paths(path: &std::path::Path) -> Vec<DirEntry> {
     let mut paths: Vec<DirEntry> = Vec::new();
     let entries = std::fs::read_dir(path).expect("Failed to read directory");
     for entry in entries {
@@ -81,7 +78,13 @@ pub fn configuration_selection(paths: Vec<String>) -> String {
 ///
 /// This function creates a template configuration with example commands and arguments,
 /// serializes it to JSON, and writes it to a file named `cchain_template.json`.
-pub fn generate_template() {
+pub fn generate_template(name: Option<&str>) {
+    let filename = if let Some(name) = name {
+        name
+    } else {
+        "cchain_template.json"
+    };
+
     // Create a template configuration
     let template = vec![
         Program::new(
@@ -109,10 +112,10 @@ pub fn generate_template() {
     let template_json =
         serde_json::to_string_pretty(&template).expect("Failed to serialize template");
     // Write the template JSON to a file
-    std::fs::write("cchain_template.json", template_json).expect("Failed to write template file");
+    std::fs::write(filename, template_json).expect("Failed to write template file");
     display_message(
         Level::Logging, 
-        "Template configuration file generated: cchain_template.json"
+        &format!("Template configuration file generated: {}", filename)
     );
 }
 
