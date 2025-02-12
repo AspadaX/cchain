@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Error, Result};
 
 use crate::{
-    cli::{program::Program, traits::{Execution, ExecutionType}}, commons::utility::input_message, display_control::display_message, variable::{
+    cli::{program::Program, traits::{Execution, ExecutionType}}, commons::utility::input_message, variable::{
         Variable, 
         VariableGroupControl, 
         VariableInitializationTime

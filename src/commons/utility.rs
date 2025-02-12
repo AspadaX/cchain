@@ -1,25 +1,21 @@
 use std::collections::HashMap;
-use std::fs::canonicalize;
 use std::fs::DirEntry;
 use std::io::Write;
-use std::str::FromStr;
 
 use anyhow::{Error, Result};
 
-use crate::cli::command::CommandLine;
 use crate::cli::interpreter::Interpreter;
 use crate::cli::options::FailureHandlingOptions;
 use crate::cli::options::StdoutStorageOptions;
 use crate::cli::program::Program;
 use crate::display_control::display_message;
 use crate::display_control::Level;
-use crate::function;
 
-fn get_paths(path: &std::path::Path) -> Vec<DirEntry> {
+pub fn get_paths(path: &std::path::Path) -> Result<Vec<DirEntry>, Error> {
     let mut paths: Vec<DirEntry> = Vec::new();
-    let entries = std::fs::read_dir(path).expect("Failed to read directory");
+    let entries = std::fs::read_dir(path)?;
     for entry in entries {
-        let entry = entry.expect("Failed to read entry");
+        let entry = entry?;
         if entry.path().is_file()
             && entry.path().extension().map_or(false, |ext| ext == "json")
             && entry.file_name().to_string_lossy().starts_with("cchain_")
@@ -27,61 +23,20 @@ fn get_paths(path: &std::path::Path) -> Vec<DirEntry> {
             paths.push(entry);
         }
     }
-    paths
-}
-
-/// Resolves the configuration file to use based on the provided paths.
-///
-/// This function lists available configuration files and prompts the user to select one.
-///
-/// # Arguments
-///
-/// * `paths` - A vector of strings representing the paths to configuration files.
-///
-/// # Returns
-///
-/// A `String` representing the path to the selected configuration file.
-pub fn configuration_selection(paths: Vec<String>) -> String {
-    if paths.is_empty() {
-        display_message(
-            Level::Error, 
-            "No configuration files provided in the paths argument"
-        );
-        std::process::exit(1);
-    }
-
-    // List available configuration files for the user to select
-    display_message(
-        Level::Logging, 
-        "Available configuration files:"
-    );
-    for (i, path) in paths.iter().enumerate() {
-        display_message(
-            Level::Selection, 
-        &format!("{}: {}", i, path)
-        );
-    }
-
-    // Prompt the user to select a configuration file
-    display_message(
-        Level::Logging, 
-        "Please select a configuration file by entering the corresponding number:"
-    );
-    let mut selection = String::new();
-    std::io::stdin()
-        .read_line(&mut selection)
-        .expect("Failed to read input");
-    let index: usize = selection.trim().parse().expect("Invalid selection");
-
-    // Return the selected configuration file path
-    paths[index].to_string()
+    Ok(paths)
 }
 
 /// Generates a template configuration file.
 ///
 /// This function creates a template configuration with example commands and arguments,
 /// serializes it to JSON, and writes it to a file named `cchain_template.json`.
-pub fn generate_template() {
+pub fn generate_template(name: Option<&str>) -> Result<(), Error> {
+    let filename = if let Some(name) = name {
+        "cchain_".to_string() + name + ".json"
+    } else {
+        "cchain_template.json".to_string()
+    };
+
     // Create a template configuration
     let template = vec![
         Program::new(
@@ -107,39 +62,15 @@ pub fn generate_template() {
     ];
     // Serialize the template to JSON
     let template_json =
-        serde_json::to_string_pretty(&template).expect("Failed to serialize template");
+        serde_json::to_string_pretty(&template)?;
     // Write the template JSON to a file
-    std::fs::write("cchain_template.json", template_json).expect("Failed to write template file");
+    std::fs::write(&filename, template_json)?;
     display_message(
         Level::Logging, 
-        "Template configuration file generated: cchain_template.json"
+        &format!("Template chain generated: {}", &filename)
     );
-}
-
-/// Collects paths of all JSON files starting with 'cchain_' from the specified directory.
-///
-/// This function reads the specified directory and collects all files that have a '.json' extension
-/// and start with 'cchain_'. It then returns a vector of the paths to these files as strings.
-///
-/// # Arguments
-///
-/// * `path` - A reference to the path of the directory to read the JSON files from.
-///
-/// # Returns
-///
-/// A `Result` containing a vector of strings, each representing the path to a JSON file, or an error if any occurs.
-pub fn resolve_cchain_configuration_filepaths(
-    path: &std::path::Path,
-) -> Result<Vec<String>, Error> {
-    let mut json_paths: Vec<String> = Vec::new();
-    let paths = get_paths(path);
-
-    for entry in paths {
-        let path_str = canonicalize(entry.path())?.to_string_lossy().to_string();
-        json_paths.push(path_str);
-    }
-
-    Ok(json_paths)
+    
+    Ok(())
 }
 
 pub fn input_message(prompt: &str) -> Result<String, Error> {

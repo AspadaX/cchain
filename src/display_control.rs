@@ -1,9 +1,8 @@
-use std::cell::Cell;
-
 use console::style;
+use prettytable::{Cell, Row, Table};
 
 thread_local! {
-    static DEPTH: Cell<usize> = Cell::new(1);
+    static DEPTH: std::cell::Cell<usize> = std::cell::Cell::new(1);
 }
 
 pub struct DepthGuard;
@@ -29,6 +28,7 @@ impl Drop for DepthGuard {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub enum Level {
     ProgramOutput,
     Logging,
@@ -54,4 +54,27 @@ pub fn display_message(
         Level::Warn => println!("{}{}", indentation, style(message).red()),
         Level::Selection => println!("{}{}", indentation, style(message).blue())
     }
+}
+
+pub fn display_form(column_labels: Vec<&str>, rows: &Vec<Vec<String>>) {
+    let mut table = Table::new();
+    let top_line: Vec<Cell> = column_labels
+        .iter()
+        .map(|item| Cell::new(item))
+        .collect();
+    table.add_row(
+        Row::new(top_line)
+    );
+
+    for row in rows {
+        table.add_row(
+            Row::new(
+                row.iter()
+                .map(|item| Cell::new(item))
+                .collect()
+            )
+        );
+    }
+
+    table.printstd();
 }

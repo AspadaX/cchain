@@ -127,7 +127,7 @@ impl Function {
                 .into()])
             .build()?;
 
-        let mut result = String::new();
+        let result: String;
 
         loop {
             let response: CreateChatCompletionResponse =
