@@ -111,7 +111,8 @@ async fn main() -> Result<(), Error> {
                                 filepath.canonicalize()
                                     .unwrap()
                                     .to_str()
-                                    .unwrap())
+                                    .unwrap()
+                            )
                         ),
                         Err(error) => {
                             display_message(
@@ -121,7 +122,6 @@ async fn main() -> Result<(), Error> {
                         }
                     };
                 }
-
                 display_message(
                     Level::Logging, 
                     "Bookmark registration is done."
@@ -141,8 +141,8 @@ async fn main() -> Result<(), Error> {
                 form_data.push(
                     vec![
                         index.to_string(),
+                        reference.get_human_readable_name(),
                         reference.get_chain_path_string(),
-                        reference.get_human_readable_name()
                     ]
                 );
             }
