@@ -1,4 +1,4 @@
-use std::fs::DirEntry;
+use std::fs::{canonicalize, DirEntry};
 use std::path::Path;
 
 use anyhow::{Error, Result};
@@ -54,7 +54,8 @@ async fn main() -> Result<(), Error> {
         Commands::Add(subcommand) => {
             if let Some(path) = subcommand.path.clone() {
                 if subcommand.all {
-                    let filepaths: Vec<DirEntry> = get_paths(Path::new(&path))?;
+                    let fullpath = canonicalize(&path)?;
+                    let filepaths: Vec<DirEntry> = get_paths(Path::new(&fullpath))?;
                     display_message(
                         Level::Logging,
                         &format!(
