@@ -195,6 +195,11 @@ impl Execution for Program {
                     return Ok(output_stdout);
                 },
                 Err(err) => {
+                    // If retry number is set to 0, 
+                    // it should not display the retry messages.
+                    if self.retry == 0 {
+                        return Err(err);
+                    }
                     // Increase attempt counter.
                     attempts += 1;
                     let warn_msg = format!(
@@ -213,11 +218,6 @@ impl Execution for Program {
                             "Failed to execute {}: {}", 
                             self.get_execution_type(), 
                             &self
-                        );
-                        // Optionally display whatever output we have (here we log the error message).
-                        display_message(
-                            Level::ProgramOutput, 
-                            &format!("Process error: {}", err)
                         );
                         // No stdout storage options to apply, as no output was captured.
                         self.execute_remedy_command_line().await?;

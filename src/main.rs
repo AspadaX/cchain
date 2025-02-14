@@ -28,7 +28,10 @@ async fn main() -> Result<(), Error> {
                     // Load and parse the configuration file
                     let mut chain = Chain::from_file(&path)?;
                     // Iterate over each configuration and execute the commands
-                    chain.execute().await?;
+                    match chain.execute().await {
+                        Ok(_) => return Ok(()),
+                        Err(error) => display_message(Level::Error, &error.to_string()),
+                    };
                 },
                 None => {
                     if let Some(index) = subcommand.index {
