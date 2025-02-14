@@ -23,34 +23,36 @@ async fn main() -> Result<(), Error> {
     // Map the arguments to corresponding code logics
     match arguments.commands {
         Commands::Run(subcommand) => {
-            match subcommand.path {
+            match subcommand.chain {
                 Some(path) => {
-                    // Load and parse the configuration file
-                    let mut chain = Chain::from_file(&path)?;
-                    // Iterate over each configuration and execute the commands
-                    match chain.execute().await {
-                        Ok(_) => return Ok(()),
-                        Err(error) => display_message(Level::Error, &error.to_string()),
-                    };
+                    // If the input is parsable into an usize, it will use it as an
+                    // index to the bookmark. Otherwise, it will use it as a path
+                    match path.parse::<usize>() {
+                        Ok(index) => {
+                            if let Some(chain_reference) = bookmark
+                                .get_chain_reference_by_index(index) 
+                            {
+                                let mut chain = Chain::from_file(
+                                    &chain_reference.get_chain_path_string()
+                                )?;
+                                chain.execute().await?;
+                            } 
+                        },
+                        Err(_) => {
+                            // Load and parse the configuration file
+                            let mut chain = Chain::from_file(&path)?;
+                            // Iterate over each configuration and execute the commands
+                            match chain.execute().await {
+                                Ok(_) => return Ok(()),
+                                Err(_) => {
+                                    chain.show_statistics();
+                                    display_message(Level::Error, "Chain execution finished with error(s) ocurred");
+                                },
+                            };
+                        }
+                    }
                 },
                 None => {
-                    if let Some(index) = subcommand.index {
-                        if let Some(chain_reference) = bookmark
-                            .get_chain_reference_by_index(index) 
-                        {
-                            let mut chain = Chain::from_file(
-                                &chain_reference.get_chain_path_string()
-                            )?;
-                            chain.execute().await?;
-                        } 
-                    } else {
-                        display_message(
-                            Level::Error, 
-                            &format!(
-                                "Please input an index to a chain that you want to execute. 😢"
-                            )
-                        );
-                    }
                 }
             }
         },
@@ -192,15 +194,17 @@ async fn main() -> Result<(), Error> {
     
             return Ok(());
         },
-        Commands::Generate(subcommand) => {
-            if subcommand.llm {
-                display_message(
-                    Level::Error, 
-                    "LLM generation feature has not yet implemented. Stay tuned. 😈"
-                );
-            }
+        Commands::New(subcommand) => {
             generate_template(subcommand.name.as_deref())?;
 
+            return Ok(());
+        }
+        Commands::Generate(subcommand) => {
+            display_message(
+                Level::Error, 
+                "LLM generation feature has not yet implemented. Stay tuned. 😈"
+            );
+            
             return Ok(());
         }
     }

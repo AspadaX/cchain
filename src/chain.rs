@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Error, Result};
 
 use crate::{
-    cli::{program::Program, traits::{Execution, ExecutionType}}, commons::utility::input_message, variable::{
+    cli::{program::Program, traits::{Execution, ExecutionType}}, commons::utility::input_message, display_control::{display_message, Level}, variable::{
         Variable, 
         VariableGroupControl, 
         VariableInitializationTime
@@ -11,6 +11,7 @@ use crate::{
 pub struct Chain {
     programs: Vec<Program>,
     variables: Vec<Variable>,
+    failed_program_executions: usize,
 }
 
 impl Chain {
@@ -57,6 +58,7 @@ impl Chain {
         Ok(Self {
             programs,
             variables,
+            failed_program_executions: 0
         })
     }
     
@@ -98,6 +100,20 @@ impl Chain {
         }
 
         Ok(())
+    }
+    
+    pub fn increment_failed_execution(&mut self) {
+        self.failed_program_executions += 1;
+    }
+    
+    pub fn show_statistics(&self) {
+        display_message(
+            Level::Error, 
+            &format!(
+                "{} failures occurred when executing programs.", 
+                self.failed_program_executions
+            )
+        );
     }
 }
 
@@ -150,7 +166,7 @@ impl Execution for Chain {
                 variable.register_value(input.trim().to_string());
             }
         }
-
+        
         // Iterate over each program configuration in the chain and execute them sequentially.
         // For each program, we first process any argument functions, then insert the chain's variables
         // into the program, and finally execute the program. If the program provides an awaitable variable,
@@ -177,13 +193,49 @@ impl Execution for Chain {
             // Check if the program returns an awaitable variable.
             if let Some(variable) = program.get_awaitable_variable().clone() {
                 // Execute the program and capture its output.
-                let output: String = program.execute().await?;
+                let output: String = match program.execute().await {
+                    Ok(result) => result,
+                    Err(error) => {
+                        display_message(Level::Error, &error.to_string());
+                        if !program.get_failure_handling_options().exit_on_failure {
+                            display_message(
+                                Level::Logging, 
+                                &format!(
+                                    "`exit_on_failure` is set to false. Continue executing the chain..."
+                                )
+                            );
+                            self.increment_failed_execution();
+                            continue;
+                        } else {
+                            self.increment_failed_execution();
+                            return Err(error);
+                        }
+                    }
+                };
                 // Return the awaitable variable along with the captured output.
                 awaitable_variable = Some(variable);
                 awaitable_value = Some(output);
             } else {
                 // If there is no awaitable variable, simply execute the program.
-                program.execute().await?;
+                match program.execute().await {
+                    Ok(result) => result,
+                    Err(error) => {
+                        display_message(Level::Error, &error.to_string());
+                        if !program.get_failure_handling_options().exit_on_failure {
+                            display_message(
+                                Level::Warn, 
+                                &format!(
+                                    "`exit_on_failure` is set to false. Continue executing the chain..."
+                                )
+                            );
+                            self.increment_failed_execution();
+                            continue;
+                        } else {
+                            self.increment_failed_execution();
+                            return Err(error);
+                        }
+                    }
+                };
             }
 
             // If the program returned an awaitable variable and output, update the chain's variable.
