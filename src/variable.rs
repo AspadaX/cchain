@@ -26,7 +26,7 @@ pub enum VariableInitializationTime {
     Await,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Variable {
     /// The name for the variable
     name: String,
