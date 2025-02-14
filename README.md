@@ -80,7 +80,7 @@ The generated file will be automatically named as: `cchain_your_file_name.json`.
 
 Run `cchain` with a chain file:
 ```sh
-cchain run --path path/to/cchain_your_file.json
+cchain run path/to/cchain_your_file.json
 ```
 
 ### Failure Handling
