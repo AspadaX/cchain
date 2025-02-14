@@ -2,8 +2,9 @@
   {
     "command": "echo",
     "arguments": [
-      "$fun"
+      "$hello"
     ],
+    "interpreter": "sh",
     "environment_variables_override": {
       "hello": "world",
       "foo": "bar"
@@ -13,8 +14,9 @@
   {
     "command": "echo",
     "arguments": [
-      "$fun"
+      "$hello"
     ],
+    "interpreter": "sh",
     "environment_variables_override": null,
     "retry": 0
   }

@@ -28,6 +28,8 @@ pub enum Commands {
     /// Remove chain(s) to your bookmark
     #[clap(short_flag = 'r')]
     Remove(RemoveArguments),
+    /// Create a chain template
+    New(NewArguments),
     /// Generate a chain
     #[clap(short_flag = 'g')]
     Generate(GenerateArguments)
@@ -36,13 +38,10 @@ pub enum Commands {
 #[derive(Debug, Args)]
 #[command(group = clap::ArgGroup::new("sources").required(true).multiple(false))]
 pub struct RunArguments {
-    /// Index of the chain
+    /// Index of the chain, 
+    /// or a path to a chain
     #[arg(group = "sources")]
-    pub index: Option<usize>,
-    
-    /// Path to the chain
-    #[arg(long, short, group = "sources")]
-    pub path: Option<String>,
+    pub chain: Option<String>,
 }
 
 #[derive(Debug, Args)]
@@ -73,15 +72,20 @@ pub struct RemoveArguments {
     pub reset: bool,
 }
 
-#[derive(Debug, Parser)]
-pub struct GenerateArguments {
+#[derive(Debug, Args)]
+#[command(group = clap::ArgGroup::new("sources").required(true).multiple(false))]
+pub struct NewArguments {
     /// Name the generated chain, by default,
     /// it will be a template file. 
-    #[clap(short, long)]
+    #[arg(group = "sources")]
     pub name: Option<String>,
+}
 
+#[derive(Debug, Args)]
+#[command(group = clap::ArgGroup::new("sources").required(true).multiple(false))]
+pub struct GenerateArguments {
     /// Generate a command line chain but with LLM
-    /// making the chain. Default to `false`.
-    #[clap(short, long, default_value = "false")]
-    pub llm: bool,
+    /// making the chain. 
+    #[arg(group = "sources")]
+    pub llm: String,
 }

@@ -56,6 +56,7 @@ cargo build --release
 ## Usage
 
 ### Basic Example
+
 Create a JSON configuration file to define your command chain. For example:
 ```json
 [
@@ -71,10 +72,15 @@ Create a JSON configuration file to define your command chain. For example:
     }
 ]
 ```
+You may also run this command to generate a template file to work with:
+```sh
+cchain new your_file_name
+```
+The generated file will be automatically named as: `cchain_your_file_name.json`. Notice that `cchain` will only recognize files that has a `cchain_` prefix along with a `.json` extension.
 
 Run `cchain` with a chain file:
 ```sh
-cchain run --path path/to/cchain_your_file.json
+cchain run path/to/cchain_your_file.json
 ```
 
 ### Failure Handling

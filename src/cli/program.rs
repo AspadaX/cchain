@@ -83,15 +83,6 @@ impl Program {
         }
     }
 
-    fn apply_failure_handling_options(&self, error_message: String) -> Result<(), Error> {
-        if self.failure_handling_options.exit_on_failure {
-            display_message(Level::Error, &error_message);
-            return Err(anyhow!("{}", error_message));
-        }
-
-        Ok(())
-    }
-    
     pub fn get_failure_handling_options(&mut self) -> &mut FailureHandlingOptions {
         &mut self.failure_handling_options
     }
@@ -195,6 +186,11 @@ impl Execution for Program {
                     return Ok(output_stdout);
                 },
                 Err(err) => {
+                    // If retry number is set to 0, 
+                    // it should not display the retry messages.
+                    if self.retry == 0 {
+                        return Err(err);
+                    }
                     // Increase attempt counter.
                     attempts += 1;
                     let warn_msg = format!(
@@ -209,20 +205,8 @@ impl Execution for Program {
                     // (retry 0 means no retries; any non-negative value means that many attempts;
                     // -1 means unlimited retries.)
                     if self.retry == 0 || (self.retry != -1 && attempts >= self.retry) {
-                        let error_message: String = format!(
-                            "Failed to execute {}: {}", 
-                            self.get_execution_type(), 
-                            &self
-                        );
-                        // Optionally display whatever output we have (here we log the error message).
-                        display_message(
-                            Level::ProgramOutput, 
-                            &format!("Process error: {}", err)
-                        );
                         // No stdout storage options to apply, as no output was captured.
                         self.execute_remedy_command_line().await?;
-                        // Apply any failure handling options and then return the error.
-                        self.apply_failure_handling_options(error_message)?;
                         return Err(err);
                     }
                     // Otherwise, we loop again.
