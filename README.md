@@ -166,7 +166,7 @@ cchain add path/to/cchain_your_file.json
 ```
 Or, you may want to add a directory of cchain files
 ```sh
-cchain add path/to/a/directory --all
+cchain add path/to/a/directory
 ```
 
 Look up existing bookmarked chains and their indexes
@@ -187,6 +187,20 @@ cchain remove 0
 Reset the entire bookmark if needed:
 ```sh
 cchain remove --reset
+```
+
+### Syntax Check
+
+You may want to make sure that your chain won't crash unexpected. The syntax check offers a mechanism that looks over your chain and then pick up potential issues. This is still an experimental feature, and may not be accurate. 
+
+You can check your chain bu running:
+```sh
+cchain check ./path/to/your/chain.json
+```
+
+or, simply pass in an index of a bookmarked chain
+```sh
+cchain check 0
 ```
 
 ---
