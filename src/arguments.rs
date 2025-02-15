@@ -28,6 +28,8 @@ pub enum Commands {
     /// Remove chain(s) to your bookmark
     #[clap(short_flag = 'r')]
     Remove(RemoveArguments),
+    /// Validate the chain syntax
+    Check(CheckArguments),
     /// Create a chain template
     New(NewArguments),
     /// Generate a chain
@@ -41,19 +43,17 @@ pub struct RunArguments {
     /// Index of the chain, 
     /// or a path to a chain
     #[arg(group = "sources")]
-    pub chain: Option<String>,
+    pub chain: String,
 }
 
 #[derive(Debug, Args)]
-#[command(group = clap::ArgGroup::new("sources").required(true).multiple(true))]
+#[command(group = clap::ArgGroup::new("sources").required(true).multiple(false))]
 pub struct AddArguments {
     /// Path to your chain file or a directory 
-    /// that contains multiple chains
+    /// that contains multiple chains,
+    /// or, add all chains under this directory to the bookmark
     #[arg(group = "sources")]
-    pub path: Option<String>,
-    /// Add all chains under this directory to the bookmark
-    #[arg(long, short, group = "sources", default_value = "false")]
-    pub all: bool,
+    pub path: String,
 }
 
 #[derive(Debug, Parser)]
@@ -70,6 +70,14 @@ pub struct RemoveArguments {
     /// when `cchain` breaks.
     #[arg(short, long, group = "sources", default_value = "false")]
     pub reset: bool,
+}
+
+#[derive(Debug, Args)]
+#[command(group = clap::ArgGroup::new("sources").required(true).multiple(false))]
+pub struct CheckArguments {
+    /// A path to a chain, or an index in the bookmark
+    #[arg(group = "sources")]
+    pub chain: String,
 }
 
 #[derive(Debug, Args)]

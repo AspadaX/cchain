@@ -12,18 +12,53 @@ use regex;
 /// 3. get a program's output as a value.
 ///     - marked by a key called `stdout_stored_to` in the config.
 
+/// For determing the variable lifetime in a chain
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VariableLifetime {
+    /// When does this variable gurantee to initialize
+    initialization_program_index: usize
+}
+
+impl VariableLifetime {
+    pub fn new(initialization_program_index: Option<usize>) -> Self {
+        Self {
+            // Default to 0 for OnChainStartup variables
+            initialization_program_index: initialization_program_index
+                .unwrap_or(0)
+        }
+    }
+}
+
 /// Denotes the different times at which a variable should be initialized.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VariableInitializationTime {
     /// Initialized on the chain's startup
-    OnChainStartup,
+    OnChainStartup(VariableLifetime),
     /// Initialized when executing a program where the variable
     /// is not pre-assigned on startup.
     /// Triggered by `:on_program_execution` syntax.
-    OnProgramExecution,
+    OnProgramExecution(VariableLifetime),
     /// Initialization is deferred until the variable's value
     /// is obtained from a program's output.
-    Await,
+    Await(VariableLifetime),
+}
+
+impl VariableInitializationTime {
+    /// Determine whether the variable is initialized in the current 
+    /// program
+    pub fn is_initialized(&self, program_index: usize) -> bool {
+        match self {
+            VariableInitializationTime::OnChainStartup(lifetime) => {
+                lifetime.initialization_program_index == program_index
+            },
+            VariableInitializationTime::OnProgramExecution(lifetime) => {
+                lifetime.initialization_program_index == program_index
+            },
+            VariableInitializationTime::Await(lifetime) => {
+                lifetime.initialization_program_index == program_index
+            },
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -64,7 +99,7 @@ impl Variable {
             name,
             value,
             human_readable_name: human_readable_name.unwrap(),
-            initialization_time,
+            initialization_time
         }
     }
 
@@ -86,15 +121,25 @@ impl Variable {
     ///
     /// * `Result<Vec<Variable>, Error>` - A result containing a vector of `Variable` instances
     ///   if successful, or an `Error` if parsing fails.
-    pub fn parse_variables_from_str(s: &str) -> Result<Vec<Variable>, Error> {
+    pub fn parse_variables_from_str(s: &str, program_index: usize) -> Result<Vec<Variable>, Error> {
         let mut variables: Vec<Variable> = Vec::new();
 
         // Iterate over each occurrence of a variable placeholder in the string.
         for raw_var in Self::extract_variable_names(s) {
             // For each placeholder, determine the variable name and its initialization time.
-            let (name, init_time) = Self::parse_initialization_time(raw_var);
+            let (name, init_time) = Self::parse_initialization_time(
+                raw_var,
+                program_index
+            );
             // Create a new Variable instance with no assigned value and no human readable name override.
-            variables.push(Variable::new(name, None, None, init_time));
+            variables.push(
+                Variable::new(
+                    name, 
+                    None, 
+                    None, 
+                    init_time
+                )
+            );
         }
 
         Ok(variables)
@@ -119,18 +164,24 @@ impl Variable {
     /// A tuple containing:
     /// - A String with the variable name.
     /// - A `VariableInitializationTime` reflecting when the variable should be initialized.
-    pub fn parse_initialization_time(s: &str) -> (String, VariableInitializationTime) {
+    fn parse_initialization_time(s: &str, program_index: usize) -> (String, VariableInitializationTime) {
         // Expects s to be either "variable" or "variable:qualifier"
         if let Some(idx) = s.find(':') {
             let name = s[..idx].to_string();
             let qualifier = s[idx + 1..].to_lowercase();
             let init_time = match qualifier.as_str() {
-                "on_program_execution" => VariableInitializationTime::OnProgramExecution,
-                _ => VariableInitializationTime::OnChainStartup,
+                "on_program_execution" => VariableInitializationTime::OnProgramExecution(
+                    VariableLifetime::new(Some(program_index))
+                ),
+                _ => VariableInitializationTime::OnChainStartup(
+                    VariableLifetime::new(None)
+                ),
             };
             (name, init_time)
         } else {
-            (s.to_string(), VariableInitializationTime::OnChainStartup)
+            (s.to_string(), VariableInitializationTime::OnChainStartup(
+                VariableLifetime::new(None)
+            ))
         }
     }
 
@@ -147,13 +198,22 @@ impl Variable {
     /// # Returns
     ///
     /// A `Variable` instance with an initialization time set to `Await`.
-    pub fn parse_await_variable(s: &str) -> Variable {
+    pub fn parse_await_variable(s: &str, program_index: usize) -> Variable {
         let trimmed = s.trim();
         let var_name = trimmed
             .trim_start_matches("<<")
             .trim_end_matches(">>")
             .to_string();
-        Variable::new(var_name, None, None, VariableInitializationTime::Await)
+        Variable::new(
+            var_name, 
+            None, 
+            None, 
+            VariableInitializationTime::Await(
+                VariableLifetime::new(
+                    Some(program_index)
+                )
+            )
+        )
     }
 
     /// Extracts variable names from the provided string.
@@ -199,12 +259,17 @@ impl Variable {
         &self.human_readable_name
     }
 
+    /// Variable name without additional syntax like `:`
     pub fn get_variable_name(&self) -> &str {
         &self.name
     }
 
+    /// Complete variable name with additional syntax
     pub fn get_raw_variable_name(&self) -> String {
-        "<<".to_string() + &self.name + ">>"
+        match self.initialization_time {
+            VariableInitializationTime::OnProgramExecution { .. } => "<<".to_string() + &self.name + ":" + "on_program_execution" + ">>",
+            _ => "<<".to_string() + &self.name + ">>",
+        }
     }
 
     pub fn get_initialization_time(&self) -> VariableInitializationTime {

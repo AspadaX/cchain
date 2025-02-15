@@ -8,7 +8,7 @@
     "stdout_stored_to": "<<env_var_output>>",
     "interpreter": "sh",
     "failure_handling_options": {
-      "exit_on_failure": false,
+      "exit_on_failure": true,
       "remedy_command_line": {
         "command": "echo",
         "arguments": ["$<<env_var_name>>"],

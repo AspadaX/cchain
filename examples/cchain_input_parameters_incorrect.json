@@ -1,0 +1,40 @@
+[
+  {
+    "command": "echo",
+    "arguments": ["$<<env_var_name_2>>"],
+    "environment_variables_override": {
+      "hello": "world"
+    },
+    "interpreter": "sh",
+    "stdout_stored_to": null,
+    "retry": 0
+  },
+  {
+    "command": "echo",
+    "arguments": ["$<<env_var_name_2:on_program_execution>>"],
+    "environment_variables_override": {
+      "hello": "world"
+    },
+    "failure_handling_options": {
+      "exit_on_failure": false,
+      "remedy_command_line": {
+        "command": "echo",
+        "arguments": ["$<<env_var_output>>"],
+        "interpreter": "sh"
+      }
+    },
+    "interpreter": "sh",
+    "stdout_stored_to": null,
+    "retry": 0
+  },
+  {
+    "command": "echo",
+    "arguments": ["$world"],
+    "environment_variables_override": {
+      "world": "order"
+    },
+    "interpreter": "sh",
+    "stdout_stored_to": "<<env_var_output>>",
+    "retry": 0
+  }
+]

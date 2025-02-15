@@ -23,11 +23,14 @@ impl Chain {
         // check if there are variables being specified in the programs,
         // if so, register them in the chain.
         let mut variables: Vec<Variable> = Vec::new();
-        for program in &mut programs {
+        for (index, program) in programs
+            .iter_mut()
+            .enumerate()
+        {
             if let Some(awaitable_variable) = program
                 .get_awaitable_variable() {
                     variables.push(
-                        Variable::parse_await_variable(awaitable_variable)
+                        Variable::parse_await_variable(awaitable_variable, index)
                     );
             }
 
@@ -36,17 +39,17 @@ impl Chain {
                 .get_arguments() 
             {
                 let variables_in_arguments: Vec<Variable> =
-                    Variable::parse_variables_from_str(argument)?;
+                    Variable::parse_variables_from_str(argument, index)?;
                 
                 if variables.len() != 0 {
                     for item in &variables_in_arguments {
                         if !variables
-                                .iter()
-                                .any(
-                                    |v| 
-                                    v.get_variable_name() == item.get_variable_name()
-                                ) {
-                                    variables.push(item.to_owned());
+                            .iter()
+                            .any(
+                                |v| 
+                                v.get_variable_name() == item.get_variable_name()
+                            ) {
+                                variables.push(item.to_owned());
                         }
                     }
                 } else {
@@ -60,6 +63,89 @@ impl Chain {
             variables,
             failed_program_executions: 0
         })
+    }
+    
+    pub async fn validate_syntax(&mut self) -> Result<(), Error> {
+        // Collect problematic variables
+        let mut variables_used_without_being_initialized: Vec<Variable> = Vec::new();
+        
+        for (index, program) in self.programs
+            .iter_mut()
+            .enumerate() 
+        {
+            let mut variables_involved: Vec<Variable> = Vec::new();
+            // Get all variables involed in this program
+            // Get the variables in arguments first
+            for argument in program
+                .get_command_line()
+                .get_arguments()
+            {
+                variables_involved.extend(
+                    Variable::parse_variables_from_str(
+                        argument, 
+                        index
+                    )?
+                );
+            }
+            // Get the variables in remedy command if any
+            if let Some(remedy_command_line) = program
+                .get_remedy_command_line() 
+            {
+                for argument in remedy_command_line
+                    .get_arguments()
+                {
+                    variables_involved.extend(
+                        Variable::parse_variables_from_str(
+                            argument, 
+                            index
+                        )?
+                    );
+                }
+            }
+            // Check the lifetime validity of the variables
+            for variable_involved in variables_involved {
+                let is_initialized = variable_involved
+                    .get_initialization_time()
+                    .is_initialized(index);
+                
+                if !is_initialized {
+                    variables_used_without_being_initialized.push(
+                        variable_involved
+                    );
+                }
+            }
+        }
+        
+        if variables_used_without_being_initialized.len() != 0 {
+            display_message(
+                Level::Error, 
+                &format!(
+                    "{} variables are used without being initialized. 😭",
+                    variables_used_without_being_initialized.len()
+                )
+            );
+            
+            for variable in variables_used_without_being_initialized {
+                display_message(
+                    Level::Error, 
+                    &format!(
+                        "Problematic variable: {}",
+                        variable.get_raw_variable_name()
+                    )
+                );
+            }
+            
+            return Err(anyhow!("Check is not passed. 😢"))
+        }
+        
+        display_message(
+            Level::Logging, 
+            &format!(
+                "Check is passed! 😄"
+            )
+        );
+        
+        Ok(())
     }
     
     /// Inserts provided variables into the program's arguments.
@@ -156,7 +242,9 @@ impl Execution for Chain {
     async fn execute(&mut self) -> Result<String, Error> {
         // See if any program needs input on startup
         for variable in &mut self.variables {
-            if variable.get_initialization_time() == VariableInitializationTime::OnChainStartup {
+            if let VariableInitializationTime::OnChainStartup(_) = variable
+                .get_initialization_time() 
+            {
                 let input: String = input_message(
                     &format!(
                         "Please input a value for {}:",
@@ -172,6 +260,38 @@ impl Execution for Chain {
         // into the program, and finally execute the program. If the program provides an awaitable variable,
         // we capture its output and update the corresponding variable in the chain.
         for i in 0..self.programs.len() {
+            // Check if the current program needs input to a value's intialization
+            // time that is `on_program_execution`. If so, prompt the user for
+            // inputting a value
+            for argument in self
+                .programs[i]
+                .get_command_line()
+                .get_arguments() 
+            {
+                let mut prorgam_variables: Vec<Variable> = Variable::parse_variables_from_str(
+                    argument,
+                    i
+                )?;
+                for program_variable in &mut prorgam_variables {
+                    for variable in &mut self.variables {
+                        if program_variable.get_raw_variable_name() == variable.get_raw_variable_name() &&
+                            matches!(
+                                program_variable.get_initialization_time(), 
+                                VariableInitializationTime::OnProgramExecution(_)
+                            )
+                        {
+                            let input: String = input_message(
+                                &format!(
+                                    "Please input a value for {}:",
+                                    variable.get_human_readable_name()
+                                )
+                            )?;
+                            variable.register_value(input.trim().to_string());
+                        }
+                    }
+                }
+            }
+            
             // Record awaitable variable if any
             let mut awaitable_variable: Option<String> = None;
             let mut awaitable_value: Option<String> = None;
@@ -197,6 +317,17 @@ impl Execution for Chain {
                     Ok(result) => result,
                     Err(error) => {
                         display_message(Level::Error, &error.to_string());
+                        if let Some(command) = program.get_remedy_command_line() {
+                            display_message(
+                                Level::Logging, 
+                                &format!(
+                                    "Remedy command is set. Try executing: {}", 
+                                    command
+                                )
+                            );
+                            // execute the remedy command line if any
+                            program.execute_remedy_command_line().await?;
+                        }
                         if !program.get_failure_handling_options().exit_on_failure {
                             display_message(
                                 Level::Logging, 
@@ -221,6 +352,18 @@ impl Execution for Chain {
                     Ok(result) => result,
                     Err(error) => {
                         display_message(Level::Error, &error.to_string());
+                        if let Some(command) = program.get_remedy_command_line() {
+                            display_message(
+                                Level::Logging, 
+                                &format!(
+                                    "Remedy command is set. Try executing: {}", 
+                                    command
+                                )
+                            );
+                            // execute the remedy command line if any
+                            program.execute_remedy_command_line().await?;
+                        }
+                        
                         if !program.get_failure_handling_options().exit_on_failure {
                             display_message(
                                 Level::Warn, 
