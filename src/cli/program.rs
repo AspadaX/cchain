@@ -1,6 +1,6 @@
 use std::{collections::HashMap, str::FromStr};
 
-use anyhow::{anyhow, Error};
+use anyhow::Error;
 use serde::{Deserialize, Serialize};
 
 use crate::{display_control::{display_message, Level}, function::Function};
@@ -56,6 +56,7 @@ impl Program {
         &self.retry
     }
 
+    /// Get the Await variable declared in this program
     pub fn get_awaitable_variable(&self) -> &Option<String> {
         &self.stdout_stored_to
     }

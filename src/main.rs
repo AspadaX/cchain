@@ -23,118 +23,122 @@ async fn main() -> Result<(), Error> {
     // Map the arguments to corresponding code logics
     match arguments.commands {
         Commands::Run(subcommand) => {
-            match subcommand.chain {
-                Some(path) => {
-                    // If the input is parsable into an usize, it will use it as an
-                    // index to the bookmark. Otherwise, it will use it as a path
-                    match path.parse::<usize>() {
-                        Ok(index) => {
-                            if let Some(chain_reference) = bookmark
-                                .get_chain_reference_by_index(index) 
-                            {
-                                let mut chain = Chain::from_file(
-                                    &chain_reference.get_chain_path_string()
-                                )?;
-                                chain.execute().await?;
-                            } 
-                        },
-                        Err(_) => {
-                            // Load and parse the configuration file
-                            let mut chain = Chain::from_file(&path)?;
-                            // Iterate over each configuration and execute the commands
-                            match chain.execute().await {
-                                Ok(_) => return Ok(()),
-                                Err(_) => {
-                                    chain.show_statistics();
-                                    display_message(Level::Error, "Chain execution finished with error(s) ocurred");
-                                },
-                            };
-                        }
-                    }
+            // If the input is parsable into an usize, it will use it as an
+            // index to the bookmark. Otherwise, it will use it as a path
+            match subcommand.chain.parse::<usize>() {
+                Ok(index) => {
+                    if let Some(chain_reference) = bookmark
+                        .get_chain_reference_by_index(index) 
+                    {
+                        let mut chain = Chain::from_file(
+                            &chain_reference.get_chain_path_string()
+                        )?;
+                        chain.execute().await?;
+                    } 
                 },
-                None => {
+                Err(_) => {
+                    // Load and parse the configuration file
+                    let mut chain = Chain::from_file(&subcommand.chain)?;
+                    // Iterate over each configuration and execute the commands
+                    match chain.execute().await {
+                        Ok(_) => return Ok(()),
+                        Err(_) => {
+                            chain.show_statistics();
+                            display_message(Level::Error, "Chain execution finished with error(s) ocurred");
+                        },
+                    };
                 }
             }
         },
         Commands::Add(subcommand) => {
-            if let Some(path) = subcommand.path.clone() {
-                if subcommand.all {
-                    let fullpath = canonicalize(&path)?;
-                    let filepaths: Vec<DirEntry> = get_paths(Path::new(&fullpath))?;
-                    display_message(
-                        Level::Logging,
-                        &format!(
-                            "Registering {} chains to the bookmark",
-                            filepaths.len()
-                        )
-                    );
-                    for filepath in filepaths {
-                        match bookmark.add_chain_reference(
-                            filepath.path()
-                                .canonicalize()
-                                .unwrap()
-                                .to_string_lossy()
-                                .to_string()) {
-                            Ok(_) => {
-                                display_message(
-                                    Level::Logging,
-                                    &format!(
-                                        "{} is registered successfully.", 
-                                        filepath.path()
-                                            .canonicalize()
-                                            .unwrap()
-                                            .to_str()
-                                            .unwrap())
-                                );
-                                continue;
-                            }
-                            Err(error) => {
-                                display_message(
-                                    Level::Warn, 
-                                    &format!("{}, skipped bookmarking.", error.to_string())
-                                );
-                                continue;
-                            }
-                        };
-                    }
-                } else {
-                    display_message(
-                        Level::Logging,
-                        "Registering a chain to the bookmark"
-                    );
-                    
-                    let filepath: &Path = Path::new(&path);
-                    
+            let path = Path::new(&subcommand.path);
+            
+            if !path.exists() {
+                display_message(
+                    Level::Error,
+                    &format!("Provided path does not exist! Operation aborted.")
+                );
+            }
+            
+            if path.is_dir() {
+                let fullpath = canonicalize(&path)?;
+                let filepaths: Vec<DirEntry> = get_paths(Path::new(&fullpath))?;
+                display_message(
+                    Level::Logging,
+                    &format!(
+                        "Registering {} chains to the bookmark",
+                        filepaths.len()
+                    )
+                );
+                for filepath in filepaths {
                     match bookmark.add_chain_reference(
-                        filepath.canonicalize()
+                        filepath.path()
+                            .canonicalize()
                             .unwrap()
                             .to_string_lossy()
                             .to_string()) {
-                        Ok(_) => display_message(
-                            Level::Logging,
-                            &format!(
-                                "{} is registered successfully.", 
-                                filepath.canonicalize()
-                                    .unwrap()
-                                    .to_str()
-                                    .unwrap()
-                            )
-                        ),
+                        Ok(_) => {
+                            display_message(
+                                Level::Logging,
+                                &format!(
+                                    "{} is registered successfully.", 
+                                    filepath.path()
+                                        .canonicalize()
+                                        .unwrap()
+                                        .to_str()
+                                        .unwrap())
+                            );
+                            continue;
+                        }
                         Err(error) => {
                             display_message(
                                 Level::Warn, 
                                 &format!("{}, skipped bookmarking.", error.to_string())
                             );
+                            continue;
                         }
                     };
                 }
-                display_message(
-                    Level::Logging, 
-                    "Bookmark registration is done."
-                );
-                bookmark.save();
-                return Ok(());
             }
+            
+            if path.is_file() {
+                display_message(
+                    Level::Logging,
+                    "Registering a chain to the bookmark"
+                );
+                
+                let filepath: &Path = Path::new(&path);
+                
+                match bookmark.add_chain_reference(
+                    filepath.canonicalize()
+                        .unwrap()
+                        .to_string_lossy()
+                        .to_string()) {
+                    Ok(_) => display_message(
+                        Level::Logging,
+                        &format!(
+                            "{} is registered successfully.", 
+                            filepath.canonicalize()
+                                .unwrap()
+                                .to_str()
+                                .unwrap()
+                        )
+                    ),
+                    Err(error) => {
+                        display_message(
+                            Level::Warn, 
+                            &format!("{}, skipped bookmarking.", error.to_string())
+                        );
+                    }
+                };
+            }
+            
+            display_message(
+                Level::Logging, 
+                "Bookmark registration is done."
+            );
+            bookmark.save();
+            return Ok(());
         },
         Commands::List(_) => {
             let references: &Vec<ChainReference> = &bookmark.get_chain_references();
@@ -194,12 +198,33 @@ async fn main() -> Result<(), Error> {
     
             return Ok(());
         },
+        Commands::Check(subcommand) => {
+            // If the input is parsable into an usize, it will use it as an
+            // index to the bookmark. Otherwise, it will use it as a path
+            match subcommand.chain.parse::<usize>() {
+                Ok(index) => {
+                    if let Some(chain_reference) = bookmark
+                        .get_chain_reference_by_index(index) 
+                    {
+                        let mut chain = Chain::from_file(
+                            &chain_reference.get_chain_path_string()
+                        )?;
+                        chain.validate_syntax().await?;
+                    } 
+                },
+                Err(_) => {
+                    // Load and parse the configuration file
+                    let mut chain = Chain::from_file(&subcommand.chain)?;
+                    chain.validate_syntax().await?;
+                }
+            }
+        },
         Commands::New(subcommand) => {
             generate_template(subcommand.name.as_deref())?;
 
             return Ok(());
         }
-        Commands::Generate(subcommand) => {
+        Commands::Generate(_) => {
             display_message(
                 Level::Error, 
                 "LLM generation feature has not yet implemented. Stay tuned. 😈"

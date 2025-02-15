@@ -1,0 +1,22 @@
+[
+  {
+    "command": "echo",
+    "arguments": ["$hello"],
+    "interpreter": "sh",
+    "environment_variables_override": {
+      "hello": "world",
+      "foo": "bar"
+    },
+    "retry": 0
+  },
+  {
+    "command": "echo",
+    "arguments": ["$<<input_foo:on_program_execution>>"],
+    "interpreter": "sh",
+    "environment_variables_override": {
+      "hello": "world",
+      "foo": "bar"
+    },
+    "retry": 0
+  }
+]
