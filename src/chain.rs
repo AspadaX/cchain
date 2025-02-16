@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use futures::future::join_all;
 use anyhow::{anyhow, Error, Result};
 
 use crate::{
@@ -483,12 +484,36 @@ impl ConcurrentExecution for Chain {
         if let Some(concurrency_groups) = self
             .try_get_concurrent_groups() 
         {
-                
+            // Execute in order with the concurrency groups
+            for group in concurrency_groups {
+                let tasks = group
+                    .into_iter()
+                    .map(|program| {
+                        // Determine the program index using pointer comparison.
+                        let program_ptr = program as *const Program;
+                        let program_index = self.programs.iter().position(|p| (p as *const Program) == program_ptr).unwrap();
+                        // Obtain a mutable pointer of the program.
+                        let program_ptr_mut = program as *const Program as *mut Program;
+                        async move {
+                            // SAFETY: We ensure that each program is uniquely accessed via its index.
+                            let program_mut: &mut Program = unsafe { &mut *program_ptr_mut };
+                            let result = program_mut.execute().await;
+                            (program_index, result)
+                        }
+                    });
+                let results: Vec<(usize, Result<String, Error>)> = join_all(tasks).await;
+                for (program_index, result) in results {
+                    if let Err(error) = result {
+                        self.handle_program_execution_failures(
+                            program_index, 
+                            &error.to_string()
+                        ).await?;
+                    }
+                }
+            }
         } else {
             return Err(anyhow!("No concurrency groups are detected"))
         }
-        
-        // Execute in order with the concurrency groups
         
         Ok("Done".to_string())
     }
