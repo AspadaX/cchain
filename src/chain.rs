@@ -1,7 +1,9 @@
+use std::collections::HashSet;
+
 use anyhow::{anyhow, Error, Result};
 
 use crate::{
-    cli::{program::Program, traits::{Execution, ExecutionType}}, commons::utility::input_message, display_control::{display_message, Level}, variable::{
+    cli::{program::Program, traits::{ConcurrentExecution, Execution, ExecutionType}}, commons::utility::input_message, display_control::{display_message, Level}, variable::{
         Variable, 
         VariableGroupControl, 
         VariableInitializationTime
@@ -11,7 +13,7 @@ use crate::{
 pub struct Chain {
     programs: Vec<Program>,
     variables: Vec<Variable>,
-    failed_program_executions: usize,
+    failed_program_executions: usize
 }
 
 impl Chain {
@@ -188,6 +190,110 @@ impl Chain {
         Ok(())
     }
     
+    pub fn initialize_variables_on_chain_startup(&mut self) -> Result<(), Error> {
+        for variable in &mut self.variables {
+            if let VariableInitializationTime::OnChainStartup(_) = variable
+                .get_initialization_time() 
+            {
+                let input: String = input_message(
+                    &format!(
+                        "Please input a value for {}:",
+                        variable.get_human_readable_name()
+                    )
+                )?;
+                variable.register_value(input.trim().to_string());
+            }
+        }
+        
+        Ok(())
+    }
+    
+    /// Initializes variables for the program execution phase.
+    ///
+    /// This method iterates over each argument of the specified program and extracts variables from these arguments.
+    /// For each variable that requires initialization at program execution (i.e., its initialization time is
+    /// `VariableInitializationTime::OnProgramExecution`), the method prompts the user to input a value. The provided
+    /// value is then registered with the corresponding variable in the chain.
+    ///
+    /// # Arguments
+    ///
+    /// * `program_index` - The index of the program in the chain whose arguments will be inspected for variables
+    ///                     needing initialization during program execution.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` if initialization is successful for all applicable variables, or an `Error` if any step fails.
+    pub fn initialize_variables_on_program_execution(&mut self, program_index: usize) -> Result<(), Error> {
+        for argument in self
+            .programs[program_index]
+            .get_command_line()
+            .get_arguments()
+        {
+            let mut program_variables: Vec<Variable> = Variable::parse_variables_from_str(
+                argument,
+                program_index
+            )?;
+            for program_variable in &mut program_variables {
+                for variable in &mut self.variables {
+                    if program_variable.get_raw_variable_name() == variable.get_raw_variable_name() &&
+                        matches!(
+                            program_variable.get_initialization_time(),
+                            VariableInitializationTime::OnProgramExecution(_)
+                        )
+                    {
+                        let input: String = input_message(
+                            &format!(
+                                "Please input a value for {}:",
+                                variable.get_human_readable_name()
+                            )
+                        )?;
+                        variable.register_value(input.trim().to_string());
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+    
+    pub async fn handle_program_execution_failures(
+        &mut self, 
+        program_index: usize,
+        error_message: &str
+    ) -> Result<(), Error> {
+        // Increment the failure count
+        self.increment_failed_execution();
+        // Acquire a mut reference to the program
+        let program: &mut Program = self.programs.get_mut(program_index).unwrap();
+        // Display error message
+        display_message(Level::Error, &error_message);
+        
+        if let Some(command) = program
+            .get_remedy_command_line() 
+        {
+            display_message(
+                Level::Logging, 
+                &format!(
+                    "Remedy command is set. Try executing: {}", 
+                    command
+                )
+            );
+            // execute the remedy command line if any
+            program.execute_remedy_command_line().await?;
+        }
+        
+        if !program.get_failure_handling_options().exit_on_failure {
+            display_message(
+                Level::Warn, 
+                &format!(
+                    "`exit_on_failure` is set to false. Continue executing the chain..."
+                )
+            );
+            return Ok(());
+        } else {
+            return Err(anyhow!(error_message.to_string()));
+        }
+    }
+    
     pub fn increment_failed_execution(&mut self) {
         self.failed_program_executions += 1;
     }
@@ -200,6 +306,57 @@ impl Chain {
                 self.failed_program_executions
             )
         );
+    }
+    
+    /// Try making the chain execution into concurrent batches. 
+    /// If no concurrent groups are found, it will return None
+    pub fn try_get_concurrent_groups(&self) -> Option<Vec<Vec<&Program>>> {
+        let mut concurrency_groups: Vec<Vec<&Program>> = Vec::new();
+        // For every loop, we get the concurrency group number until
+        // no more concurrency groups are found
+        let mut previous_concurrency_groups: HashSet<usize> = HashSet::new();
+        for program in &self.programs {
+            // Determine if the program is part of a concurrency group
+            if let Some(concurrency_group_number) = program
+                .get_concurrency_group() 
+            {
+                // Create new vec to contain the programs in this 
+                // concurrency group
+                if previous_concurrency_groups
+                    .insert(concurrency_group_number) 
+                {
+                    let mut group = Vec::new();
+                    group.push(program);
+                    concurrency_groups.push(group);
+                } else {
+                    // Find the previous existing vec. 
+                    // Then pushing the program into it
+                    if let Some(group) = concurrency_groups
+                        .iter_mut()
+                        .find(|g| g[0].get_concurrency_group() == Some(concurrency_group_number))
+                    {
+                        group.push(program);
+                    }
+                }
+            } else {
+                // If the program is not part of a concurrency group, 
+                // create a new vec to contain it
+                let mut group = Vec::new();
+                group.push(program);
+                concurrency_groups.push(group);
+            }
+        }
+        
+        // If all concurrency groups contain only one program, 
+        // that means there is no concurrency, so return None
+        if concurrency_groups
+            .iter()
+            .all(|item| item.len() == 1) 
+        {
+            return None;
+        }
+        
+        Some(concurrency_groups)
     }
 }
 
@@ -220,7 +377,7 @@ impl VariableGroupControl for Chain {
                 return Ok(variable.get_value()?);
             }
         }
-
+        
         return Err(anyhow!("Variable {} does not exist!", variable_name));
     }
 
@@ -241,19 +398,7 @@ impl Execution for Chain {
 
     async fn execute(&mut self) -> Result<String, Error> {
         // See if any program needs input on startup
-        for variable in &mut self.variables {
-            if let VariableInitializationTime::OnChainStartup(_) = variable
-                .get_initialization_time() 
-            {
-                let input: String = input_message(
-                    &format!(
-                        "Please input a value for {}:",
-                        variable.get_human_readable_name()
-                    )
-                )?;
-                variable.register_value(input.trim().to_string());
-            }
-        }
+        self.initialize_variables_on_chain_startup()?;
         
         // Iterate over each program configuration in the chain and execute them sequentially.
         // For each program, we first process any argument functions, then insert the chain's variables
@@ -263,34 +408,7 @@ impl Execution for Chain {
             // Check if the current program needs input to a value's intialization
             // time that is `on_program_execution`. If so, prompt the user for
             // inputting a value
-            for argument in self
-                .programs[i]
-                .get_command_line()
-                .get_arguments() 
-            {
-                let mut prorgam_variables: Vec<Variable> = Variable::parse_variables_from_str(
-                    argument,
-                    i
-                )?;
-                for program_variable in &mut prorgam_variables {
-                    for variable in &mut self.variables {
-                        if program_variable.get_raw_variable_name() == variable.get_raw_variable_name() &&
-                            matches!(
-                                program_variable.get_initialization_time(), 
-                                VariableInitializationTime::OnProgramExecution(_)
-                            )
-                        {
-                            let input: String = input_message(
-                                &format!(
-                                    "Please input a value for {}:",
-                                    variable.get_human_readable_name()
-                                )
-                            )?;
-                            variable.register_value(input.trim().to_string());
-                        }
-                    }
-                }
-            }
+            self.initialize_variables_on_program_execution(i)?;
             
             // Record awaitable variable if any
             let mut awaitable_variable: Option<String> = None;
@@ -316,31 +434,12 @@ impl Execution for Chain {
                 let output: String = match program.execute().await {
                     Ok(result) => result,
                     Err(error) => {
-                        display_message(Level::Error, &error.to_string());
-                        if let Some(command) = program.get_remedy_command_line() {
-                            display_message(
-                                Level::Logging, 
-                                &format!(
-                                    "Remedy command is set. Try executing: {}", 
-                                    command
-                                )
-                            );
-                            // execute the remedy command line if any
-                            program.execute_remedy_command_line().await?;
-                        }
-                        if !program.get_failure_handling_options().exit_on_failure {
-                            display_message(
-                                Level::Logging, 
-                                &format!(
-                                    "`exit_on_failure` is set to false. Continue executing the chain..."
-                                )
-                            );
-                            self.increment_failed_execution();
-                            continue;
-                        } else {
-                            self.increment_failed_execution();
-                            return Err(error);
-                        }
+                        self.handle_program_execution_failures(
+                            i, 
+                            &error.to_string()
+                        ).await?;
+                        
+                        continue;
                     }
                 };
                 // Return the awaitable variable along with the captured output.
@@ -351,32 +450,12 @@ impl Execution for Chain {
                 match program.execute().await {
                     Ok(result) => result,
                     Err(error) => {
-                        display_message(Level::Error, &error.to_string());
-                        if let Some(command) = program.get_remedy_command_line() {
-                            display_message(
-                                Level::Logging, 
-                                &format!(
-                                    "Remedy command is set. Try executing: {}", 
-                                    command
-                                )
-                            );
-                            // execute the remedy command line if any
-                            program.execute_remedy_command_line().await?;
-                        }
+                        self.handle_program_execution_failures(
+                            i, 
+                            &error.to_string()
+                        ).await?;
                         
-                        if !program.get_failure_handling_options().exit_on_failure {
-                            display_message(
-                                Level::Warn, 
-                                &format!(
-                                    "`exit_on_failure` is set to false. Continue executing the chain..."
-                                )
-                            );
-                            self.increment_failed_execution();
-                            continue;
-                        } else {
-                            self.increment_failed_execution();
-                            return Err(error);
-                        }
+                        continue;
                     }
                 };
             }
@@ -390,6 +469,27 @@ impl Execution for Chain {
             }
         }
 
+        Ok("Done".to_string())
+    }
+}
+
+impl ConcurrentExecution for Chain {
+    fn get_execution_type(&self) -> &ExecutionType {
+        &ExecutionType::Chain
+    }
+    
+    async fn execute_concurrently(&mut self) -> Result<String, Error> {
+        // Determine the concurrency groups and the sequential execution orders
+        if let Some(concurrency_groups) = self
+            .try_get_concurrent_groups() 
+        {
+                
+        } else {
+            return Err(anyhow!("No concurrency groups are detected"))
+        }
+        
+        // Execute in order with the concurrency groups
+        
         Ok("Done".to_string())
     }
 }

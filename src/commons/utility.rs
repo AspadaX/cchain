@@ -47,6 +47,7 @@ pub fn generate_template(name: Option<&str>) -> Result<(), Error> {
             StdoutStorageOptions::default(),
             Some(Interpreter::Sh),
             FailureHandlingOptions::default(),
+            None,
             3,
         ),
         Program::new(
@@ -57,6 +58,7 @@ pub fn generate_template(name: Option<&str>) -> Result<(), Error> {
             StdoutStorageOptions::default(),
             None,
             FailureHandlingOptions::default(),
+            None,
             5,
         ),
     ];

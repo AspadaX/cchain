@@ -27,3 +27,13 @@ where
 
     async fn execute(&mut self) -> Result<String, Error>;
 }
+
+/// Concurrent executions
+pub trait ConcurrentExecution
+where
+    Self: Execution,
+{
+    fn get_execution_type(&self) -> &ExecutionType;
+    
+    async fn execute_concurrently(&mut self) -> Result<String, Error>;
+}

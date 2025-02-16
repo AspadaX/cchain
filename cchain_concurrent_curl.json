@@ -1,0 +1,78 @@
+[
+  {
+    "command": "xh",
+    "arguments": [
+      "download",
+      "http://speedtest.tele2.net/5MB.zip"
+    ],
+    "interpreter": null,
+    "environment_variables_override": {},
+    "stdout_stored_to": null,
+    "stdout_storage_options": {
+      "without_newline_characters": true
+    },
+    "failure_handling_options": {
+      "exit_on_failure": false,
+      "remedy_command_line": null
+    },
+    "concurrency_group": 1,
+    "retry": 0
+  },
+  {
+    "command": "xh",
+    "arguments": [
+      "download",
+      "http://speedtest.tele2.net/5MB.zip"
+    ],
+    "interpreter": null,
+    "environment_variables_override": {},
+    "stdout_stored_to": null,
+    "stdout_storage_options": {
+      "without_newline_characters": true
+    },
+    "failure_handling_options": {
+      "exit_on_failure": false,
+      "remedy_command_line": null
+    },
+    "concurrency_group": 1,
+    "retry": 0
+  },
+  {
+    "command": "xh",
+    "arguments": [
+      "download",
+      "http://speedtest.tele2.net/5MB.zip"
+    ],
+    "interpreter": null,
+    "environment_variables_override": {},
+    "stdout_stored_to": null,
+    "stdout_storage_options": {
+      "without_newline_characters": true
+    },
+    "failure_handling_options": {
+      "exit_on_failure": false,
+      "remedy_command_line": null
+    },
+    "concurrency_group": 2,
+    "retry": 0
+  },
+  {
+    "command": "xh",
+    "arguments": [
+      "download",
+      "http://speedtest.tele2.net/5MB.zip"
+    ],
+    "interpreter": null,
+    "environment_variables_override": {},
+    "stdout_stored_to": null,
+    "stdout_storage_options": {
+      "without_newline_characters": true
+    },
+    "failure_handling_options": {
+      "exit_on_failure": false,
+      "remedy_command_line": null
+    },
+    "concurrency_group": 2,
+    "retry": 0
+  }
+]

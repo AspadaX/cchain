@@ -20,6 +20,10 @@ pub struct Program {
     /// Failure handling options
     #[serde(default)]
     failure_handling_options: FailureHandlingOptions,
+    /// Define the tasks to be concurrently executed in the same group/batch.
+    /// By default, this is set to None, which does not execute concurrently,
+    /// just sequential executions as normal.
+    concurrency_group: Option<usize>,
     /// Retry policy for executing the command.
     ///
     /// Use -1 to retry indefinitely, or any non-negative value to specify
@@ -36,6 +40,7 @@ impl Program {
         stdout_storage_options: StdoutStorageOptions,
         interpreter: Option<Interpreter>,
         failure_handling_options: FailureHandlingOptions,
+        concurrency_group: Option<usize>,
         retry: i32,
     ) -> Self {
         Program {
@@ -48,6 +53,7 @@ impl Program {
             stdout_stored_to,
             stdout_storage_options,
             failure_handling_options,
+            concurrency_group,
             retry,
         }
     }
@@ -61,10 +67,12 @@ impl Program {
         &self.stdout_stored_to
     }
     
+    /// Get the command line declared in this program
     pub fn get_command_line(&mut self) -> &mut CommandLine {
         &mut self.command_line
     }
     
+    /// Get the remedy command line declared in this program
     pub fn get_remedy_command_line(&mut self) -> Option<&mut CommandLine> {
         if let Some(command_line) = &mut self
             .failure_handling_options
@@ -74,6 +82,12 @@ impl Program {
         }
         
         None
+    }
+    
+    /// Get the concurrency group declared in this program, 
+    /// if no concurrency group is declared, return None
+    pub fn get_concurrency_group(&self) -> Option<usize> {
+        self.concurrency_group
     }
 
     /// In-place operation on the stdout string. 
@@ -224,6 +238,7 @@ impl Default for Program {
             stdout_stored_to: None,
             stdout_storage_options: StdoutStorageOptions::default(),
             failure_handling_options: FailureHandlingOptions::default(),
+            concurrency_group: None,
             retry: 0,
         }
     }
