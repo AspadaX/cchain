@@ -63,15 +63,14 @@ pub fn generate_template(name: Option<&str>) -> Result<(), Error> {
         ),
     ];
     // Serialize the template to JSON
-    let template_json =
-        serde_json::to_string_pretty(&template)?;
+    let template_json = serde_json::to_string_pretty(&template)?;
     // Write the template JSON to a file
     std::fs::write(&filename, template_json)?;
     display_message(
-        Level::Logging, 
-        &format!("Template chain generated: {}", &filename)
+        Level::Logging,
+        &format!("Template chain generated: {}", &filename),
     );
-    
+
     Ok(())
 }
 
@@ -83,6 +82,6 @@ pub fn input_message(prompt: &str) -> Result<String, Error> {
     // receive stdin
     std::io::stdout().flush()?;
     std::io::stdin().read_line(&mut input)?;
-    
+
     Ok(input)
 }

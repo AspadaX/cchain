@@ -10,14 +10,12 @@ use crate::commons::naming::HumanReadable;
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ChainReference {
     /// Path to the chain
-    chain_path: String
+    chain_path: String,
 }
 
 impl ChainReference {
     pub fn new(path: String) -> Self {
-        Self {
-            chain_path: path
-        }
+        Self { chain_path: path }
     }
 
     pub fn get_chain_path_string(&self) -> String {
@@ -32,22 +30,20 @@ impl FromStr for ChainReference {
         if path.exists() {
             if path.is_file()
                 && path.extension().map_or(false, |ext| ext == "json")
-                && path.file_name().unwrap().to_string_lossy().starts_with("cchain_")
+                && path
+                    .file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .starts_with("cchain_")
             {
-                return Ok(
-                    Self {
-                        chain_path: s.to_string()
-                    }
-                )
+                return Ok(Self {
+                    chain_path: s.to_string(),
+                });
             } else {
-                return Err(
-                    anyhow!("Chain at {} has a wrong naming convention", s)
-                ); 
+                return Err(anyhow!("Chain at {} has a wrong naming convention", s));
             }
         } else {
-            return Err(
-                anyhow!("Chain at {} does not exist", s)
-            ); 
+            return Err(anyhow!("Chain at {} does not exist", s));
         }
     }
 }
@@ -60,7 +56,9 @@ impl HumanReadable for ChainReference {
     }
 
     fn get_human_readable_name(&self) -> String {
-        let result: String = self.get_raw_name().split('_')
+        let result: String = self
+            .get_raw_name()
+            .split('_')
             .map(|word| {
                 let mut c = word.chars();
                 match c.next() {

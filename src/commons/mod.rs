@@ -1,2 +1,2 @@
-pub mod utility;
 pub mod naming;
+pub mod utility;

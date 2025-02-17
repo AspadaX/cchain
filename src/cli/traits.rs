@@ -1,13 +1,13 @@
 use std::fmt::Display;
 
-use anyhow::{Result, Error};
+use anyhow::{Error, Result};
 
 pub enum ExecutionType {
     Chain,
     Program,
     Function,
     CommandLine,
-    ConcurrencyGroup
+    ConcurrencyGroup,
 }
 
 impl std::fmt::Display for ExecutionType {
@@ -17,17 +17,18 @@ impl std::fmt::Display for ExecutionType {
             ExecutionType::Program => f.write_str("Program"),
             ExecutionType::Function => f.write_str("Function"),
             ExecutionType::CommandLine => f.write_str("Command Line"),
-            ExecutionType::ConcurrencyGroup => f.write_str("Concurrency Group")
+            ExecutionType::ConcurrencyGroup => f.write_str("Concurrency Group"),
         }
     }
 }
 
 /// Anything that can be executed
-pub trait Execution
+pub trait Execution<T>
 where
     Self: Display,
+    T: Clone + Eq + PartialEq + Send + Sync + 'static,
 {
     fn get_execution_type(&self) -> &ExecutionType;
 
-    async fn execute<T: Eq + PartialEq>(&mut self) -> Result<Vec<T>, Error>;
+    async fn execute(&mut self) -> Result<Vec<T>, Error>;
 }

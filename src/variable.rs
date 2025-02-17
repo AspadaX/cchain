@@ -16,15 +16,14 @@ use regex;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VariableLifetime {
     /// When does this variable gurantee to initialize
-    initialization_program_index: usize
+    initialization_program_index: usize,
 }
 
 impl VariableLifetime {
     pub fn new(initialization_program_index: Option<usize>) -> Self {
         Self {
             // Default to 0 for OnChainStartup variables
-            initialization_program_index: initialization_program_index
-                .unwrap_or(0)
+            initialization_program_index: initialization_program_index.unwrap_or(0),
         }
     }
 }
@@ -44,19 +43,19 @@ pub enum VariableInitializationTime {
 }
 
 impl VariableInitializationTime {
-    /// Determine whether the variable is initialized in the current 
+    /// Determine whether the variable is initialized in the current
     /// program
     pub fn is_initialized(&self, program_index: usize) -> bool {
         match self {
             VariableInitializationTime::OnChainStartup(lifetime) => {
                 lifetime.initialization_program_index == program_index
-            },
+            }
             VariableInitializationTime::OnProgramExecution(lifetime) => {
                 lifetime.initialization_program_index == program_index
-            },
+            }
             VariableInitializationTime::Await(lifetime) => {
                 lifetime.initialization_program_index == program_index
-            },
+            }
         }
     }
 }
@@ -99,7 +98,7 @@ impl Variable {
             name,
             value,
             human_readable_name: human_readable_name.unwrap(),
-            initialization_time
+            initialization_time,
         }
     }
 
@@ -127,19 +126,9 @@ impl Variable {
         // Iterate over each occurrence of a variable placeholder in the string.
         for raw_var in Self::extract_variable_names(s) {
             // For each placeholder, determine the variable name and its initialization time.
-            let (name, init_time) = Self::parse_initialization_time(
-                raw_var,
-                program_index
-            );
+            let (name, init_time) = Self::parse_initialization_time(raw_var, program_index);
             // Create a new Variable instance with no assigned value and no human readable name override.
-            variables.push(
-                Variable::new(
-                    name, 
-                    None, 
-                    None, 
-                    init_time
-                )
-            );
+            variables.push(Variable::new(name, None, None, init_time));
         }
 
         Ok(variables)
@@ -164,24 +153,26 @@ impl Variable {
     /// A tuple containing:
     /// - A String with the variable name.
     /// - A `VariableInitializationTime` reflecting when the variable should be initialized.
-    fn parse_initialization_time(s: &str, program_index: usize) -> (String, VariableInitializationTime) {
+    fn parse_initialization_time(
+        s: &str,
+        program_index: usize,
+    ) -> (String, VariableInitializationTime) {
         // Expects s to be either "variable" or "variable:qualifier"
         if let Some(idx) = s.find(':') {
             let name = s[..idx].to_string();
             let qualifier = s[idx + 1..].to_lowercase();
             let init_time = match qualifier.as_str() {
                 "on_program_execution" => VariableInitializationTime::OnProgramExecution(
-                    VariableLifetime::new(Some(program_index))
+                    VariableLifetime::new(Some(program_index)),
                 ),
-                _ => VariableInitializationTime::OnChainStartup(
-                    VariableLifetime::new(None)
-                ),
+                _ => VariableInitializationTime::OnChainStartup(VariableLifetime::new(None)),
             };
             (name, init_time)
         } else {
-            (s.to_string(), VariableInitializationTime::OnChainStartup(
-                VariableLifetime::new(None)
-            ))
+            (
+                s.to_string(),
+                VariableInitializationTime::OnChainStartup(VariableLifetime::new(None)),
+            )
         }
     }
 
@@ -205,14 +196,10 @@ impl Variable {
             .trim_end_matches(">>")
             .to_string();
         Variable::new(
-            var_name, 
-            None, 
-            None, 
-            VariableInitializationTime::Await(
-                VariableLifetime::new(
-                    Some(program_index)
-                )
-            )
+            var_name,
+            None,
+            None,
+            VariableInitializationTime::Await(VariableLifetime::new(Some(program_index))),
         )
     }
 
@@ -267,7 +254,9 @@ impl Variable {
     /// Complete variable name with additional syntax
     pub fn get_raw_variable_name(&self) -> String {
         match self.initialization_time {
-            VariableInitializationTime::OnProgramExecution { .. } => "<<".to_string() + &self.name + ":" + "on_program_execution" + ">>",
+            VariableInitializationTime::OnProgramExecution { .. } => {
+                "<<".to_string() + &self.name + ":" + "on_program_execution" + ">>"
+            }
             _ => "<<".to_string() + &self.name + ">>",
         }
     }

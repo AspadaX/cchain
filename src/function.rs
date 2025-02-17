@@ -137,18 +137,18 @@ impl Function {
                         anyhow::bail!("Failed to execute function: {}", e);
                     }
                 };
-            
+
             display_message(
-                Level::ProgramOutput, 
+                Level::ProgramOutput,
                 &format!(
                     "Function executed successfully with result: {}",
                     response.choices[0].clone().message.content.unwrap()
-                )
+                ),
             );
 
             display_message(
-                Level::Logging, 
-                "Do you want to proceed with this result? (yes/retry/abort)"
+                Level::Logging,
+                "Do you want to proceed with this result? (yes/retry/abort)",
             );
 
             let mut user_input = String::new();
@@ -173,7 +173,7 @@ impl Function {
                 _ => {
                     display_message(
                         Level::Warn,
-                        "Invalid input, please enter 'yes', 'retry', or 'abort'."
+                        "Invalid input, please enter 'yes', 'retry', or 'abort'.",
                     );
                 }
             }

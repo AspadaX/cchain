@@ -9,22 +9,14 @@ pub struct DepthGuard;
 
 impl DepthGuard {
     pub fn enter() -> Self {
-        DEPTH.with(
-            |depth| 
-            depth.set(depth.get() + 1)
-        );
+        DEPTH.with(|depth| depth.set(depth.get() + 1));
         Self
     }
 }
 
 impl Drop for DepthGuard {
     fn drop(&mut self) {
-        DEPTH.with(
-            |depth|
-            depth.set(
-                depth.get() - 1
-            )
-        )
+        DEPTH.with(|depth| depth.set(depth.get() - 1))
     }
 }
 
@@ -34,17 +26,11 @@ pub enum Level {
     Logging,
     Error,
     Warn,
-    Selection
+    Selection,
 }
 
-pub fn display_message(
-    level: Level, 
-    message: &str
-) {
-    let depth: usize = DEPTH.with(
-        |depth_variable| 
-        depth_variable.get()
-    );
+pub fn display_message(level: Level, message: &str) {
+    let depth: usize = DEPTH.with(|depth_variable| depth_variable.get());
     let indentation: String = ">> ".repeat(depth);
 
     match level {
@@ -52,28 +38,17 @@ pub fn display_message(
         Level::Error => println!("{}{}", indentation, style(message).red().bold()),
         Level::ProgramOutput => println!("{}{}", indentation, style(message).cyan()),
         Level::Warn => println!("{}{}", indentation, style(message).red()),
-        Level::Selection => println!("{}{}", indentation, style(message).blue())
+        Level::Selection => println!("{}{}", indentation, style(message).blue()),
     }
 }
 
 pub fn display_form(column_labels: Vec<&str>, rows: &Vec<Vec<String>>) {
     let mut table = Table::new();
-    let top_line: Vec<Cell> = column_labels
-        .iter()
-        .map(|item| Cell::new(item))
-        .collect();
-    table.add_row(
-        Row::new(top_line)
-    );
+    let top_line: Vec<Cell> = column_labels.iter().map(|item| Cell::new(item)).collect();
+    table.add_row(Row::new(top_line));
 
     for row in rows {
-        table.add_row(
-            Row::new(
-                row.iter()
-                .map(|item| Cell::new(item))
-                .collect()
-            )
-        );
+        table.add_row(Row::new(row.iter().map(|item| Cell::new(item)).collect()));
     }
 
     table.printstd();
