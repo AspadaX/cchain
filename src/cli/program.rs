@@ -7,7 +7,7 @@ use crate::{display_control::{display_message, Level}, function::Function};
 
 use super::{command::CommandLine, interpreter::Interpreter, options::{FailureHandlingOptions, StdoutStorageOptions}, traits::{Execution, ExecutionType}};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Program {
     #[serde(flatten)]
     command_line: CommandLine,

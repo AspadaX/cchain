@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use super::command::CommandLine;
 
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct StdoutStorageOptions {
     pub without_newline_characters: bool
 }
@@ -16,7 +16,7 @@ impl Default for StdoutStorageOptions {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct FailureHandlingOptions {
     /// Indicates whether the chain will exit when a failure is captured
     pub exit_on_failure: bool,

@@ -9,7 +9,7 @@ use crate::display_control::{display_message, Level};
 use super::{interpreter::Interpreter, traits::{Execution, ExecutionType}};
 
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct CommandLine {
     /// The command to execute.
     /// This should be the path or name of the program.
