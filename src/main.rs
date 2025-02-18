@@ -3,12 +3,12 @@ use std::path::Path;
 
 use anyhow::{Error, Result};
 use cchain::arguments::*;
-use cchain::cli::traits::Execution;
+use cchain::core::traits::Execution;
 use cchain::commons::naming::HumanReadable;
 use cchain::commons::utility::{generate_template, get_paths};
 use cchain::display_control::{display_form, display_message, Level};
 use cchain::marker::reference::ChainReference;
-use cchain::{chain::Chain, marker::bookmark::Bookmark};
+use cchain::{core::chain::Chain, marker::bookmark::Bookmark};
 use clap::Parser;
 
 #[tokio::main]

@@ -4,10 +4,10 @@ use std::io::Write;
 
 use anyhow::{Error, Result};
 
-use crate::cli::interpreter::Interpreter;
-use crate::cli::options::FailureHandlingOptions;
-use crate::cli::options::StdoutStorageOptions;
-use crate::cli::program::Program;
+use crate::core::interpreter::Interpreter;
+use crate::core::options::FailureHandlingOptions;
+use crate::core::options::StdoutStorageOptions;
+use crate::core::program::Program;
 use crate::display_control::display_message;
 use crate::display_control::Level;
 
