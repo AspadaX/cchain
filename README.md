@@ -189,11 +189,11 @@ Reset the entire bookmark if needed:
 cchain remove --reset
 ```
 
-### Syntax Check
+### Syntax Check - BETA
 
 You may want to make sure that your chain won't crash unexpected. The syntax check offers a mechanism that looks over your chain and then pick up potential issues. This is still an experimental feature, and may not be accurate. 
 
-You can check your chain bu running:
+You can check your chain by running:
 ```sh
 cchain check ./path/to/your/chain.json
 ```
@@ -202,6 +202,140 @@ or, simply pass in an index of a bookmarked chain
 ```sh
 cchain check 0
 ```
+
+### Concurrency - BETA
+
+You can run multiple programs at the same time in a chain by specifying a `concurrency_group`. Commands within the same `concurrency_group` will be executed concurrently, while commands not assigned to any group or assigned to different groups will be executed sequentially. Here is an example:
+
+```json
+[
+  {
+    "command": "echo",
+    "arguments": [
+      "$hello"
+    ],
+    "interpreter": "sh",
+    "environment_variables_override": {
+      "hello": "world",
+      "foo": "bar"
+    },
+    "retry": 0
+  },
+  {
+    "command": "xh",
+    "arguments": [
+      "download",
+      "http://speedtest.tele2.net/5MB.zip"
+    ],
+    "interpreter": null,
+    "environment_variables_override": {},
+    "stdout_stored_to": null,
+    "stdout_storage_options": {
+      "without_newline_characters": true
+    },
+    "failure_handling_options": {
+      "exit_on_failure": false,
+      "remedy_command_line": null
+    },
+    "concurrency_group": 1,
+    "retry": 0
+  },
+  {
+    "command": "xh",
+    "arguments": [
+      "download",
+      "http://speedtest.tele2.net/5MB.zip"
+    ],
+    "interpreter": null,
+    "environment_variables_override": {},
+    "stdout_stored_to": null,
+    "stdout_storage_options": {
+      "without_newline_characters": true
+    },
+    "failure_handling_options": {
+      "exit_on_failure": false,
+      "remedy_command_line": null
+    },
+    "concurrency_group": 1,
+    "retry": 0
+  },
+  {
+    "command": "echo",
+    "arguments": [
+      "$hello"
+    ],
+    "interpreter": "sh",
+    "environment_variables_override": {
+      "hello": "world",
+      "foo": "bar"
+    },
+    "retry": 0
+  },
+  {
+    "command": "xh",
+    "arguments": [
+      "download",
+      "http://speedtest.tele2.net/5MB.zip"
+    ],
+    "interpreter": null,
+    "environment_variables_override": {},
+    "stdout_stored_to": null,
+    "stdout_storage_options": {
+      "without_newline_characters": true
+    },
+    "failure_handling_options": {
+      "exit_on_failure": false,
+      "remedy_command_line": null
+    },
+    "concurrency_group": 2,
+    "retry": 0
+  },
+  {
+    "command": "xh",
+    "arguments": [
+      "download",
+      "http://speedtest.tele2.net/5MB.zip"
+    ],
+    "interpreter": null,
+    "environment_variables_override": {},
+    "stdout_stored_to": null,
+    "stdout_storage_options": {
+      "without_newline_characters": true
+    },
+    "failure_handling_options": {
+      "exit_on_failure": false,
+      "remedy_command_line": null
+    },
+    "concurrency_group": 2,
+    "retry": 0
+  },
+  {
+    "command": "echo",
+    "arguments": [
+      "$hello"
+    ],
+    "interpreter": "sh",
+    "environment_variables_override": {
+      "hello": "world",
+      "foo": "bar"
+    },
+    "retry": 0
+  }
+]
+```
+
+In this chain, the `xh` download commands, which are marked with `concurrency_group` 1, will be executed concurrently. After all commands in group 1 complete, the commands marked with `concurrency_group` 2 will be executed concurrently. The `echo` commands, which are not assigned to any `concurrency_group`, will be executed sequentially.
+
+Execution Sequence:
+1. echo $hello (sequential)
+2. xh download (concurrency_group 1)
+3. xh download (concurrency_group 1)
+4. echo $hello (sequential)
+5. xh download (concurrency_group 2)
+6. xh download (concurrency_group 2)
+7. echo $hello (sequential)
+
+echo $hello > concurrency_group 1 (first xh download, second xh download) > echo $hello > concurrency_group 2 (third xh download, fourth xh download) > echo $hello
 
 ---
 
