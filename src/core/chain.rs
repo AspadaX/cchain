@@ -289,6 +289,13 @@ impl Chain {
                 self.failed_program_executions.get()
             ),
         );
+        display_message(
+            Level::Logging,
+            &format!(
+                "{} successes occurred when executing programs.",
+                (self.programs.len() - self.failed_program_executions.get())
+            ),
+        );
     }
 }
 
@@ -409,15 +416,14 @@ impl Execution<ChainExecutionResult> for Chain {
                                     // The output of concurrency resutls are not going to be recorded
                                     // for now.
                                     Ok(_) => continue,
-                                    Err(error) => {
-                                        self.handle_program_execution_failures(i, &error.to_string())?;
-                                        continue;
+                                    Err(error) => match self.handle_program_execution_failures(i, &error.to_string()) {
+                                        Ok(_) => continue,
+                                        Err(error) => return Err(error)
                                     }
                                 }
                             }
                         
                             concurrency_group.clear();
-                            continue;
                         }
                     }
                     
@@ -437,30 +443,27 @@ impl Execution<ChainExecutionResult> for Chain {
                 }
 
                 // Check if the program returns an awaitable variable.
-                if let Some(variable) = this_program
-                    .get_awaitable_variable()
-                    .clone()
+                let awaitable_variable_this_program: Option<String> = this_program.get_awaitable_variable().clone();
+                if let Some(variable) = awaitable_variable_this_program
                 {
                     // Execute the program and capture its output.
                     let output: String = match this_program.execute() {
                         Ok(result) => result[0].clone().get_output(),
-                        Err(error) => {
-                            self.handle_program_execution_failures(i, &error.to_string())?;
-
-                            continue;
+                        Err(error) => match self.handle_program_execution_failures(i, &error.to_string()) {
+                            Ok(_) => continue,
+                            Err(error) => return Err(error)
                         }
                     };
                     // Return the awaitable variable along with the captured output.
-                    awaitable_variable = Some(variable);
+                    awaitable_variable = Some(variable.to_string());
                     awaitable_value = Some(output);
                 } else {
                     // If there is no awaitable variable, simply execute the program.
                     match this_program.execute() {
                         Ok(result) => result,
-                        Err(error) => {
-                            self.handle_program_execution_failures(i, &error.to_string())?;
-
-                            continue;
+                        Err(error) => match self.handle_program_execution_failures(i, &error.to_string()) {
+                            Ok(_) => continue,
+                            Err(error) => return Err(error)
                         }
                     };
                 }
@@ -469,6 +472,26 @@ impl Execution<ChainExecutionResult> for Chain {
             // If the program returned an awaitable variable and output, update the chain's variable.
             if awaitable_value.is_some() && awaitable_variable.is_some() {
                 self.update_value(&awaitable_variable.unwrap(), awaitable_value.unwrap());
+            }
+        }
+
+        // Execute any remaining programs in the concurrency group after the loop
+        if !concurrency_group.is_empty() {
+            let mut tasks = Vec::new();
+            for program in &concurrency_group {
+                let program_clone = program.clone();
+                tasks.push(thread::spawn(move || {
+                    let mut program = program_clone.lock().unwrap();
+                    program.execute()
+                }));
+            }
+
+            let mut results = Vec::new();
+            for task in tasks {
+                match task.join().unwrap() {
+                    Ok(result) => results.extend(result),
+                    Err(e) => return Err(e),
+                }
             }
         }
 

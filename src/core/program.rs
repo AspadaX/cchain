@@ -232,8 +232,6 @@ impl Execution<ProgramExecutionResult> for Program {
                     // (retry 0 means no retries; any non-negative value means that many attempts;
                     // -1 means unlimited retries.)
                     if self.retry == 0 || (self.retry != -1 && attempts >= self.retry) {
-                        // No stdout storage options to apply, as no output was captured.
-                        self.execute_remedy_command_line()?;
                         return Err(err);
                     }
                     // Otherwise, we loop again.
