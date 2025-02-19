@@ -16,26 +16,25 @@ pub struct Bookmark {
 
 impl Bookmark {
     pub fn reset() -> Result<(), Error> {
-        let new_path: PathBuf = dirs::home_dir()
-            .unwrap()
-            .join(".cchain");
-        
+        let new_path: PathBuf = dirs::home_dir().unwrap().join(".cchain");
+
         if new_path.exists() {
             match std::fs::remove_file(&new_path) {
                 Ok(_) => return Ok(()),
-                Err(error) => return Err(
-                    anyhow!("Failed to delete existing bookmark file: {}", error)
-                )
+                Err(error) => {
+                    return Err(anyhow!(
+                        "Failed to delete existing bookmark file: {}",
+                        error
+                    ))
+                }
             };
         }
-        
+
         Ok(())
     }
-    
+
     pub fn from_file() -> Self {
-        let bookmark_path = dirs::home_dir()
-            .unwrap()
-            .join(".cchain");
+        let bookmark_path = dirs::home_dir().unwrap().join(".cchain");
 
         if bookmark_path.exists() {
             let bookmark_file = std::fs::read_to_string(&bookmark_path).unwrap();
@@ -55,9 +54,7 @@ impl Bookmark {
     }
 
     pub fn add_chain_reference(&mut self, configuration_path: String) -> Result<(), Error> {
-        let chain_reference = ChainReference::from_str(
-            &configuration_path
-        )?;
+        let chain_reference = ChainReference::from_str(&configuration_path)?;
         if self.chain_references.contains(&chain_reference) {
             return Err(anyhow::anyhow!(
                 "Configuration is likely duplicated: {}",
@@ -82,9 +79,7 @@ impl Bookmark {
         &mut self,
         configuration_path: &str,
     ) -> Result<(), Error> {
-        let chain_reference = ChainReference::from_str(
-            configuration_path
-        )?;
+        let chain_reference = ChainReference::from_str(configuration_path)?;
         if let Some(pos) = self
             .chain_references
             .iter()

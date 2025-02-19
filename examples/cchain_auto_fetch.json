@@ -1,0 +1,59 @@
+[
+  {
+    "command": "git",
+    "arguments": [
+      "fetch"
+    ],
+    "stdout_storage_options": {
+      "without_newline_characters": true
+    },
+    "failure_handling_options": {
+      "exit_on_failure": true,
+      "remedy_command_line": null
+    },
+    "retry": 0
+  },
+  {
+    "command": "git",
+    "arguments": [
+      "pull"
+    ],
+    "stdout_storage_options": {
+      "without_newline_characters": true
+    },
+    "failure_handling_options": {
+      "exit_on_failure": true,
+      "remedy_command_line": null
+    },
+    "retry": 0
+  },
+  {
+    "command": "git",
+    "arguments": [
+      "branch"
+    ],
+    "stdout_storage_options": {
+      "without_newline_characters": true
+    },
+    "failure_handling_options": {
+      "exit_on_failure": true,
+      "remedy_command_line": null
+    },
+    "retry": 0
+  },
+  {
+    "command": "git",
+    "arguments": [
+      "switch",
+      "<<branch_to_switch:on_program_execution>>"
+    ],
+    "stdout_storage_options": {
+      "without_newline_characters": true
+    },
+    "failure_handling_options": {
+      "exit_on_failure": true,
+      "remedy_command_line": null
+    },
+    "retry": 0
+  }
+]

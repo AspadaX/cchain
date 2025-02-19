@@ -1,4 +1,10 @@
-use clap::{builder::{styling::{AnsiColor, Effects}, Styles}, Parser, Subcommand, Args};
+use clap::{
+    builder::{
+        styling::{AnsiColor, Effects},
+        Styles,
+    },
+    Args, Parser, Subcommand,
+};
 
 // Configures Clap v3-style help menu colors
 const STYLES: Styles = Styles::styled()
@@ -14,7 +20,7 @@ const STYLES: Styles = Styles::styled()
 pub struct Arguments {
     /// Groupped features provided by `cchain`
     #[clap(subcommand)]
-    pub commands: Commands
+    pub commands: Commands,
 }
 
 #[derive(Debug, Subcommand)]
@@ -34,13 +40,13 @@ pub enum Commands {
     New(NewArguments),
     /// Generate a chain
     #[clap(short_flag = 'g')]
-    Generate(GenerateArguments)
+    Generate(GenerateArguments),
 }
 
 #[derive(Debug, Args)]
 #[command(group = clap::ArgGroup::new("sources").required(true).multiple(false))]
 pub struct RunArguments {
-    /// Index of the chain, 
+    /// Index of the chain,
     /// or a path to a chain
     #[arg(group = "sources")]
     pub chain: String,
@@ -49,7 +55,7 @@ pub struct RunArguments {
 #[derive(Debug, Args)]
 #[command(group = clap::ArgGroup::new("sources").required(true).multiple(false))]
 pub struct AddArguments {
-    /// Path to your chain file or a directory 
+    /// Path to your chain file or a directory
     /// that contains multiple chains,
     /// or, add all chains under this directory to the bookmark
     #[arg(group = "sources")]
@@ -62,7 +68,7 @@ pub struct ListArguments;
 #[derive(Debug, Args)]
 #[command(group = clap::ArgGroup::new("sources").required(true).multiple(false))]
 pub struct RemoveArguments {
-    /// Index to your chain in the bookmark. 
+    /// Index to your chain in the bookmark.
     /// Can be obtained with `cchain list`
     #[arg(group = "sources")]
     pub index: Option<usize>,
@@ -84,7 +90,7 @@ pub struct CheckArguments {
 #[command(group = clap::ArgGroup::new("sources").required(true).multiple(false))]
 pub struct NewArguments {
     /// Name the generated chain, by default,
-    /// it will be a template file. 
+    /// it will be a template file.
     #[arg(group = "sources")]
     pub name: Option<String>,
 }
@@ -93,7 +99,7 @@ pub struct NewArguments {
 #[command(group = clap::ArgGroup::new("sources").required(true).multiple(false))]
 pub struct GenerateArguments {
     /// Generate a command line chain but with LLM
-    /// making the chain. 
+    /// making the chain.
     #[arg(group = "sources")]
     pub llm: String,
 }

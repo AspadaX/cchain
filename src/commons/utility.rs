@@ -4,10 +4,10 @@ use std::io::Write;
 
 use anyhow::{Error, Result};
 
-use crate::cli::interpreter::Interpreter;
-use crate::cli::options::FailureHandlingOptions;
-use crate::cli::options::StdoutStorageOptions;
-use crate::cli::program::Program;
+use crate::core::interpreter::Interpreter;
+use crate::core::options::FailureHandlingOptions;
+use crate::core::options::StdoutStorageOptions;
+use crate::core::program::Program;
 use crate::display_control::display_message;
 use crate::display_control::Level;
 
@@ -47,6 +47,7 @@ pub fn generate_template(name: Option<&str>) -> Result<(), Error> {
             StdoutStorageOptions::default(),
             Some(Interpreter::Sh),
             FailureHandlingOptions::default(),
+            None,
             3,
         ),
         Program::new(
@@ -57,30 +58,30 @@ pub fn generate_template(name: Option<&str>) -> Result<(), Error> {
             StdoutStorageOptions::default(),
             None,
             FailureHandlingOptions::default(),
+            None,
             5,
         ),
     ];
     // Serialize the template to JSON
-    let template_json =
-        serde_json::to_string_pretty(&template)?;
+    let template_json = serde_json::to_string_pretty(&template)?;
     // Write the template JSON to a file
     std::fs::write(&filename, template_json)?;
     display_message(
-        Level::Logging, 
-        &format!("Template chain generated: {}", &filename)
+        Level::Logging,
+        &format!("Template chain generated: {}", &filename),
     );
-    
+
     Ok(())
 }
 
 pub fn input_message(prompt: &str) -> Result<String, Error> {
     // display the prompt message for inputting values
-    display_message(Level::Logging, prompt);
+    display_message(Level::Input, prompt);
     // collect the input as a string
     let mut input = String::new();
     // receive stdin
     std::io::stdout().flush()?;
     std::io::stdin().read_line(&mut input)?;
-    
+
     Ok(input)
 }
