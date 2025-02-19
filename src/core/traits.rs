@@ -30,5 +30,5 @@ where
 {
     fn get_execution_type(&self) -> &ExecutionType;
 
-    async fn execute(&mut self) -> Result<Vec<T>, Error>;
+    fn execute(&mut self) -> Result<Vec<T>, Error>;
 }

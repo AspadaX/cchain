@@ -11,8 +11,7 @@ use cchain::marker::reference::ChainReference;
 use cchain::{core::chain::Chain, marker::bookmark::Bookmark};
 use clap::Parser;
 
-#[tokio::main]
-async fn main() -> Result<(), Error> {
+fn main() -> Result<(), Error> {
     // Parse command line arguments
     let arguments = Arguments::parse();
     // Instantiate the bookmark
@@ -27,14 +26,14 @@ async fn main() -> Result<(), Error> {
                 Ok(index) => {
                     if let Some(chain_reference) = bookmark.get_chain_reference_by_index(index) {
                         let mut chain = Chain::from_file(&chain_reference.get_chain_path_string())?;
-                        chain.execute().await?;
+                        chain.execute()?;
                     }
                 }
                 Err(_) => {
                     // Load and parse the configuration file
                     let mut chain = Chain::from_file(&subcommand.chain)?;
                     // Iterate over each configuration and execute the commands
-                    match chain.execute().await {
+                    match chain.execute() {
                         Ok(_) => return Ok(()),
                         Err(_) => {
                             chain.show_statistics();
@@ -179,13 +178,13 @@ async fn main() -> Result<(), Error> {
                 Ok(index) => {
                     if let Some(chain_reference) = bookmark.get_chain_reference_by_index(index) {
                         let mut chain = Chain::from_file(&chain_reference.get_chain_path_string())?;
-                        chain.validate_syntax().await?;
+                        chain.validate_syntax()?;
                     }
                 }
                 Err(_) => {
                     // Load and parse the configuration file
                     let mut chain = Chain::from_file(&subcommand.chain)?;
-                    chain.validate_syntax().await?;
+                    chain.validate_syntax()?;
                 }
             }
         }

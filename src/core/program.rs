@@ -113,19 +113,19 @@ impl Program {
     /// In-place operation on the stdout string.
     /// Directly apply the stdout storage options.
     fn apply_stdout_storage_options(&self, stdout_string: String) -> String {
-        let mut stdout_string: String = stdout_string;
+        let mut final_string = String::new();
         if self.stdout_storage_options.without_newline_characters {
-            stdout_string = stdout_string.trim_matches('\n').to_string();
+            final_string = stdout_string.trim_matches('\n').to_string();
         }
 
-        stdout_string
+        final_string
     }
 
     pub fn get_failure_handling_options(&mut self) -> &mut FailureHandlingOptions {
         &mut self.failure_handling_options
     }
 
-    pub async fn execute_argument_functions(&mut self) -> Result<(), Error> {
+    pub fn execute_argument_functions(&mut self) -> Result<(), Error> {
         // Iterate over each argument in the configuration
         for index in 0..self.command_line.get_arguments().len() {
             // Clone the current argument
@@ -147,7 +147,7 @@ impl Program {
             );
 
             // Execute the function asynchronously and await the result
-            let result: String = function.execute().await?;
+            let result: String = function.execute()?;
             self.command_line.revise_argument_by_index(index, result);
             display_message(
                 Level::Logging,
@@ -159,9 +159,9 @@ impl Program {
     }
 
     /// This method is supposed to be called when the program fails
-    pub async fn execute_remedy_command_line(&mut self) -> Result<(), Error> {
+    pub fn execute_remedy_command_line(&mut self) -> Result<(), Error> {
         if let Some(command_line) = &mut self.failure_handling_options.remedy_command_line {
-            command_line.execute().await?;
+            command_line.execute()?;
         }
 
         Ok(())
@@ -198,17 +198,18 @@ impl Execution<ProgramExecutionResult> for Program {
         &ExecutionType::Program
     }
 
-    async fn execute(&mut self) -> Result<Vec<ProgramExecutionResult>, anyhow::Error> {
+    fn execute(&mut self) -> Result<Vec<ProgramExecutionResult>, anyhow::Error> {
         let mut attempts: i32 = 0;
         // In the case of retry==0 we never retry, so our only chance is the first attempt.
         // For retry == -1, we reattempt indefinitely.
         loop {
             // Attempt execution through the commandline’s execute method.
-            match self.command_line.execute().await {
+            match self.command_line.execute() {
                 Ok(output_stdout) => {
                     // On success: apply any stdout storage options
                     let result: String =
-                        self.apply_stdout_storage_options(output_stdout[0].clone().get_output());
+                        self.apply_stdout_storage_options(output_stdout[0].get_output());
+
                     return Ok(vec![ProgramExecutionResult::new(result)]);
                 }
                 Err(err) => {
@@ -232,7 +233,7 @@ impl Execution<ProgramExecutionResult> for Program {
                     // -1 means unlimited retries.)
                     if self.retry == 0 || (self.retry != -1 && attempts >= self.retry) {
                         // No stdout storage options to apply, as no output was captured.
-                        self.execute_remedy_command_line().await?;
+                        self.execute_remedy_command_line()?;
                         return Err(err);
                     }
                     // Otherwise, we loop again.

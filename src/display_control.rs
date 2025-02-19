@@ -27,6 +27,7 @@ pub enum Level {
     Error,
     Warn,
     Selection,
+    Input
 }
 
 pub fn display_message(level: Level, message: &str) {
@@ -39,6 +40,7 @@ pub fn display_message(level: Level, message: &str) {
         Level::ProgramOutput => println!("{}{}", indentation, style(message).cyan()),
         Level::Warn => println!("{}{}", indentation, style(message).red()),
         Level::Selection => println!("{}{}", indentation, style(message).blue()),
+        Level::Input => print!("{}{} ", indentation, style(message).blue()),
     }
 }
 
@@ -52,4 +54,10 @@ pub fn display_form(column_labels: Vec<&str>, rows: &Vec<Vec<String>>) {
     }
 
     table.printstd();
+}
+
+pub fn display_program_output(output: &str) {
+    display_message(Level::ProgramOutput, "Program output 👇");
+    display_message(Level::ProgramOutput, output);
+    display_message(Level::ProgramOutput, "Program output 👆");
 }

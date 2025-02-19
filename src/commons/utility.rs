@@ -76,7 +76,7 @@ pub fn generate_template(name: Option<&str>) -> Result<(), Error> {
 
 pub fn input_message(prompt: &str) -> Result<String, Error> {
     // display the prompt message for inputting values
-    display_message(Level::Logging, prompt);
+    display_message(Level::Input, prompt);
     // collect the input as a string
     let mut input = String::new();
     // receive stdin

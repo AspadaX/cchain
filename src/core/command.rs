@@ -1,13 +1,9 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, io::{BufReader, Read}, process::{Command, Stdio}, sync::mpsc, thread, time::Duration,};
 
 use anyhow::{Error, Result};
 use serde::{Deserialize, Serialize};
-use tokio::{
-    io::{AsyncReadExt, BufReader},
-    task::JoinHandle,
-};
 
-use crate::display_control::{display_message, Level};
+use crate::display_control::{display_message, display_program_output, Level};
 
 use super::{
     interpreter::Interpreter,
@@ -24,8 +20,8 @@ impl CommandLineExecutionResult {
         Self { output }
     }
 
-    pub fn get_output(self) -> String {
-        self.output
+    pub fn get_output(&self) -> String {
+        self.output.clone()
     }
 }
 
@@ -76,11 +72,11 @@ impl CommandLine {
     ///
     /// Additionally, if the `environment_variables_override` field is set, its environment variables
     /// are applied to the command.
-    pub fn get_process_command(&mut self) -> tokio::process::Command {
-        let mut command: tokio::process::Command = match self.interpreter {
+    pub fn get_process_command(&mut self) -> Command {
+        let mut command: Command = match self.interpreter {
             Some(Interpreter::Sh) => {
                 // Use `sh` if the user has specified.
-                let mut cmd = tokio::process::Command::new("sh");
+                let mut cmd = Command::new("sh");
                 let command_line: String = {
                     let command: String = self.get_command().to_string();
                     let arguments: String = self.get_arguments().join(" ");
@@ -91,7 +87,7 @@ impl CommandLine {
             }
             _ => {
                 // On non-Unix systems, execute the command directly.
-                let mut cmd = tokio::process::Command::new(self.get_command());
+                let mut cmd = Command::new(self.get_command());
                 cmd.args(self.get_arguments());
                 cmd
             }
@@ -137,16 +133,16 @@ impl Execution<CommandLineExecutionResult> for CommandLine {
         &ExecutionType::CommandLine
     }
 
-    async fn execute(&mut self) -> Result<Vec<CommandLineExecutionResult>, Error> {
+    fn execute(&mut self) -> Result<Vec<CommandLineExecutionResult>, Error> {
         let mut command = self.get_process_command();
 
         // Set stdout to piped so that we can capture it
-        command.stdout(std::process::Stdio::piped());
+        command.stdout(Stdio::piped());
         display_message(
             Level::Logging,
             &format!("Start executing command: {}", &self),
         );
-
+    
         // Spawn the process
         let mut child = command.spawn().map_err(|e| {
             Error::msg(format!(
@@ -155,63 +151,80 @@ impl Execution<CommandLineExecutionResult> for CommandLine {
                 e
             ))
         })?;
-
+    
         // Take the stdout handle
         let stdout = child
             .stdout
             .take()
             .ok_or_else(|| Error::msg("Failed to capture stdout"))?;
-
-        // Spawn a concurrent task to read and print the output live
-        let reader_handle: JoinHandle<Result<String, Error>> = tokio::spawn(async move {
-            let mut collected_output = String::new();
-            // a reader to get the output bytes
+    
+        // Create a channel to receive output from the reader thread
+        let (tx, rx) = mpsc::channel();
+    
+        // Spawn a thread to read and send the output
+        let reader_handle = thread::spawn(move || -> Result<(), Error> {
             let mut reader = BufReader::new(stdout);
-            // temporarily store the buffer in this variable
-            let mut buffer: [u8; 1024] = [0; 1024];
+            let mut buffer = [0; 1024];
             loop {
-                match reader.read(&mut buffer).await {
-                    Ok(0) => break, // EOF
-                    Ok(n) => {
-                        let chunk = &buffer[..n];
-                        let text = String::from_utf8_lossy(chunk);
-                        display_message(Level::ProgramOutput, &text);
-                        collected_output.push_str(&text);
-                    }
-                    Err(error) => {
-                        return Err(Error::msg(format!("Failed to read stdout: {}", error)))
+                let n = reader.read(&mut buffer).map_err(|e| Error::msg(format!("Failed to read stdout: {}", e)))?;
+                if n == 0 {
+                    break; // EOF
+                }
+                let chunk = &buffer[..n];
+                let text = String::from_utf8_lossy(chunk).to_string();
+                tx.send(text).map_err(|e| Error::msg(format!("Failed to send output: {}", e)))?;
+            }
+            Ok(())
+        });
+    
+        let mut collected_output = String::new();
+    
+        // Loop to receive and display output from the channel
+        loop {
+            // Try to receive output with a timeout
+            match rx.recv_timeout(Duration::from_millis(100)) {
+                Ok(text) => {
+                    display_program_output(&text);
+                    collected_output.push_str(&text);
+                }
+                Err(mpsc::RecvTimeoutError::Timeout) => {
+                    // Check if the child process has exited
+                    match child.try_wait() {
+                        Ok(Some(status)) => {
+                            if !status.success() {
+                                return Err(Error::msg(format!(
+                                    "Process exited with non-zero status: {}",
+                                    status
+                                )));
+                            }
+                            break; // Process finished successfully
+                        }
+                        Ok(None) => {
+                            // Process still running
+                            continue;
+                        }
+                        Err(e) => {
+                            return Err(Error::msg(format!("Failed to wait on child process: {}", e)));
+                        }
                     }
                 }
+                Err(mpsc::RecvTimeoutError::Disconnected) => {
+                    // Reader thread has finished
+                    break;
+                }
             }
-
-            Ok(collected_output)
-        });
-
-        // Wait until child terminates (the output task will eventually finish as well)
-        let status = child
-            .wait()
-            .await
-            .map_err(|e| Error::msg(format!("Failed to wait on child process: {}", e)))?;
-
-        if !status.success() {
-            return Err(Error::msg(format!(
-                "Process exited with non-zero status: {}",
-                status
-            )));
         }
-
-        // Await the reader task to get the collected stdout contents.
-        let collected = reader_handle
-            .await
-            .map_err(|e| Error::msg(format!("Reader task panicked: {}", e)))??;
-
+    
+        // Ensure the reader thread has finished
+        reader_handle.join().map_err(|e| Error::msg(format!("Reader thread panicked: {:?}", e)))??;
+    
         // Display a message when the command finished execution successfully
         display_message(
             Level::Logging,
             &format!("Finished executing command: {}", &self),
         );
-
-        Ok(vec![CommandLineExecutionResult::new(collected)])
+    
+        Ok(vec![CommandLineExecutionResult::new(collected_output)])
     }
 }
 
