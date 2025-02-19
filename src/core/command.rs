@@ -1,4 +1,5 @@
-use std::{collections::HashMap, io::{BufReader, Read}, process::Command};
+use std::io::Read;
+use std::{collections::HashMap, process::Command};
 
 use anyhow::{Error, Result};
 use serde::{Deserialize, Serialize};
@@ -135,7 +136,7 @@ impl Execution<CommandLineExecutionResult> for CommandLine {
 
     fn execute(&mut self) -> Result<Vec<CommandLineExecutionResult>, Error> {
         let mut command = self.get_process_command();
-    
+        
         // Set stdout to piped so that we can capture it
         command.stdout(std::process::Stdio::piped());
         display_message(
@@ -155,38 +156,34 @@ impl Execution<CommandLineExecutionResult> for CommandLine {
         // Take the stdout handle
         let stdout = child
             .stdout
-            .take()
-            .ok_or_else(|| Error::msg("Failed to capture stdout"))?;
+            .as_mut()
+            .unwrap();
     
-        // Spawn a thread to read and print the output live
-        let reader_handle = std::thread::spawn(move || -> Result<String, Error> {
-            let mut collected_output = String::new();
-            let mut reader = BufReader::new(stdout);
-            let mut buffer = [0; 1024];
+        let mut collected_output = String::new();
+        let mut reader = std::io::BufReader::new(stdout);
+        let mut buffer: [u8; 1024] = [0; 1024];
     
-            loop {
-                match reader.read(&mut buffer) {  // Blocking read
-                    Ok(0) => break, // EOF
-                    Ok(n) => {
-                        let chunk = &buffer[..n];
-                        let text = String::from_utf8_lossy(chunk);
-                        display_program_output(&text);
-                        collected_output.push_str(&text);
-                    },
-                    Err(error) => return Err(
-                        Error::msg(format!("Failed to read stdout: {}", error))
-                    )
-                }
+        // Read output synchronously
+        loop {
+            // Clear the buffer
+            buffer.fill(0);
+            match reader.read(&mut buffer) {
+                Ok(0) => break, // EOF
+                Ok(_) => {
+                    let text = String::from_utf8_lossy(&buffer);
+                    display_program_output(&text);
+                    collected_output.push_str(&text);
+                },
+                Err(error) => return Err(
+                    Error::msg(format!("Failed to read stdout: {}", error))
+                )
             }
+        }
     
-            Ok(collected_output)
-        });
-    
-        // Wait until child terminates (blocking wait)
-        let status = child
-            .wait()
+        // Wait for process completion
+        let status = child.wait()
             .map_err(|e| Error::msg(format!("Failed to wait on child process: {}", e)))?;
-    
+        
         if !status.success() {
             return Err(Error::msg(format!(
                 "Process exited with non-zero status: {}",
@@ -194,14 +191,9 @@ impl Execution<CommandLineExecutionResult> for CommandLine {
             )));
         }
     
-        // Get the collected output from the reader thread
-        let collected = reader_handle.join()
-            .map_err(|e| Error::msg(format!("Reader thread panicked: {:?}", e)))??;
-    
-        // Display completion message
         display_message(Level::Logging, &format!("Finished executing command: {}", &self));
     
-        Ok(vec![CommandLineExecutionResult::new(collected)])
+        Ok(vec![CommandLineExecutionResult::new(collected_output)])
     }
 }
 

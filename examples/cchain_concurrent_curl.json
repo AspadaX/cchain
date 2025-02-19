@@ -1,5 +1,17 @@
 [
   {
+    "command": "echo",
+    "arguments": [
+      "$hello"
+    ],
+    "interpreter": "sh",
+    "environment_variables_override": {
+      "hello": "world",
+      "foo": "bar"
+    },
+    "retry": 0
+  },
+  {
     "command": "xh",
     "arguments": [
       "download",
@@ -35,6 +47,18 @@
       "remedy_command_line": null
     },
     "concurrency_group": 1,
+    "retry": 0
+  },
+  {
+    "command": "echo",
+    "arguments": [
+      "$hello"
+    ],
+    "interpreter": "sh",
+    "environment_variables_override": {
+      "hello": "world",
+      "foo": "bar"
+    },
     "retry": 0
   },
   {
@@ -73,6 +97,18 @@
       "remedy_command_line": null
     },
     "concurrency_group": 2,
+    "retry": 0
+  },
+  {
+    "command": "echo",
+    "arguments": [
+      "$hello"
+    ],
+    "interpreter": "sh",
+    "environment_variables_override": {
+      "hello": "world",
+      "foo": "bar"
+    },
     "retry": 0
   }
 ]

@@ -1,4 +1,4 @@
-use std::{cell::Cell, sync::{Arc, Mutex}, thread};
+use std::{cell::Cell, sync::{Arc, Mutex, MutexGuard}, thread};
 
 use anyhow::{anyhow, Error, Result};
 
@@ -246,13 +246,11 @@ impl Chain {
 
     pub fn handle_program_execution_failures(
         &self,
-        program_index: usize,
+        program: &mut MutexGuard<'_, Program>,
         error_message: &str,
     ) -> Result<(), Error> {
         // Increment the failure count
         self.increment_failed_execution();
-        // Acquire a mut reference to the program
-        let mut program = self.programs[program_index].lock().unwrap();
         // Display error message
         display_message(Level::Error, &error_message);
 
@@ -383,7 +381,7 @@ impl Execution<ChainExecutionResult> for Chain {
             // mutable in the later context
             {
                 // Acquire the lock of the program first
-                let mut this_program = self.programs[i].lock().unwrap();
+                let mut this_program: MutexGuard<'_, Program> = self.programs[i].lock().unwrap();
 
                 if let Some(concurrency_group_number_for_this_program) = this_program
                     .get_concurrency_group() 
@@ -416,7 +414,7 @@ impl Execution<ChainExecutionResult> for Chain {
                                     // The output of concurrency resutls are not going to be recorded
                                     // for now.
                                     Ok(_) => continue,
-                                    Err(error) => match self.handle_program_execution_failures(i, &error.to_string()) {
+                                    Err(error) => match self.handle_program_execution_failures(&mut this_program, &error.to_string()) {
                                         Ok(_) => continue,
                                         Err(error) => return Err(error)
                                     }
@@ -449,7 +447,7 @@ impl Execution<ChainExecutionResult> for Chain {
                     // Execute the program and capture its output.
                     let output: String = match this_program.execute() {
                         Ok(result) => result[0].clone().get_output(),
-                        Err(error) => match self.handle_program_execution_failures(i, &error.to_string()) {
+                        Err(error) => match self.handle_program_execution_failures(&mut this_program, &error.to_string()) {
                             Ok(_) => continue,
                             Err(error) => return Err(error)
                         }
@@ -461,7 +459,7 @@ impl Execution<ChainExecutionResult> for Chain {
                     // If there is no awaitable variable, simply execute the program.
                     match this_program.execute() {
                         Ok(result) => result,
-                        Err(error) => match self.handle_program_execution_failures(i, &error.to_string()) {
+                        Err(error) => match self.handle_program_execution_failures(&mut this_program, &error.to_string()) {
                             Ok(_) => continue,
                             Err(error) => return Err(error)
                         }

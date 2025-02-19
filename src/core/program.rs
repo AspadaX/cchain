@@ -211,7 +211,7 @@ impl Execution<ProgramExecutionResult> for Program {
                         self.apply_stdout_storage_options(output_stdout[0].get_output());
 
                     return Ok(vec![ProgramExecutionResult::new(result)]);
-                }
+                },
                 Err(err) => {
                     // If retry number is set to 0,
                     // it should not display the retry messages.
