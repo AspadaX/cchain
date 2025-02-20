@@ -18,6 +18,7 @@ impl ChainReference {
         Self { chain_path: path }
     }
 
+    /// Return a canonicalized path of the chain
     pub fn get_chain_path_string(&self) -> String {
         self.chain_path.clone()
     }

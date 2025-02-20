@@ -33,6 +33,8 @@ pub enum Commands {
     /// Remove chain(s) to your bookmark
     #[clap(short_flag = 'r')]
     Remove(RemoveArguments),
+    /// Clean chain(s) that are removed/moved from the original path
+    Clean(CleanArguments),
     /// Validate the chain syntax
     Check(CheckArguments),
     /// Create a chain template
@@ -79,6 +81,10 @@ pub struct RemoveArguments {
     #[arg(short, long, group = "sources", default_value = "false")]
     pub reset: bool,
 }
+
+#[derive(Debug, Args)]
+#[command(group = clap::ArgGroup::new("sources").required(false).multiple(false))]
+pub struct CleanArguments;
 
 #[derive(Debug, Args)]
 #[command(group = clap::ArgGroup::new("sources").required(true).multiple(false))]
