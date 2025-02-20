@@ -157,16 +157,14 @@ impl Variable {
         s: &str,
         program_index: usize,
     ) -> (String, VariableInitializationTime) {
-        // Expects s to be either "variable" or "variable:qualifier"
-        if let Some(idx) = s.find(':') {
-            let name = s[..idx].to_string();
-            let qualifier = s[idx + 1..].to_lowercase();
-            let init_time = match qualifier.as_str() {
-                "on_program_execution" => VariableInitializationTime::OnProgramExecution(
-                    VariableLifetime::new(Some(program_index)),
-                ),
-                _ => VariableInitializationTime::OnChainStartup(VariableLifetime::new(None)),
-            };
+        // Use regex to split on the *last* occurrence of colon+qualifier
+        let re = regex::Regex::new(r"(?ix)^(?P<name>.+?):(?P<qualifier>on_program_execution)$").unwrap();
+    
+        if let Some(caps) = re.captures(s) {
+            let name = caps["name"].to_string();
+            let init_time = VariableInitializationTime::OnProgramExecution(
+                VariableLifetime::new(Some(program_index))
+            );
             (name, init_time)
         } else {
             (
@@ -247,11 +245,13 @@ impl Variable {
     }
 
     /// Variable name without additional syntax like `:`
+    /// example: var (marked as `<<var>>`` in the chain)
     pub fn get_variable_name(&self) -> &str {
         &self.name
     }
 
     /// Complete variable name with additional syntax
+    /// example: <<var:on_program_execution>>
     pub fn get_raw_variable_name(&self) -> String {
         match self.initialization_time {
             VariableInitializationTime::OnProgramExecution { .. } => {
