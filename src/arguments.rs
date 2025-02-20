@@ -28,7 +28,7 @@ pub enum Commands {
     Run(RunArguments),
     /// Add chain(s) to your bookmark
     Add(AddArguments),
-    /// Add chain(s) to your bookmark
+    /// Show chain(s) in your bookmark
     List(ListArguments),
     /// Remove chain(s) to your bookmark
     #[clap(short_flag = 'r')]

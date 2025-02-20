@@ -1,6 +1,6 @@
 [package]
 name = "cchain"
-version = "0.2.7"
+version = "0.2.8"
 edition = "2021"
 description = "A modern cli automation tool"
 authors =  ["Xinyu Bao <baoxinyuworks@163.com>"]

@@ -171,7 +171,7 @@ impl Execution<CommandLineExecutionResult> for CommandLine {
                 Ok(0) => break, // EOF
                 Ok(n) => {
                     let text = String::from_utf8_lossy(&buffer[..n]);
-                    display_program_output(&text);
+                    display_message(Level::ProgramOutput, &text);
                     collected_output.push_str(&text);
                 },
                 Err(error) => return Err(

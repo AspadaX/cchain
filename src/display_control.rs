@@ -55,9 +55,3 @@ pub fn display_form(column_labels: Vec<&str>, rows: &Vec<Vec<String>>) {
 
     table.printstd();
 }
-
-pub fn display_program_output(output: &str) {
-    display_message(Level::ProgramOutput, "Program output 👇");
-    display_message(Level::ProgramOutput, output);
-    display_message(Level::ProgramOutput, "Program output 👆");
-}
