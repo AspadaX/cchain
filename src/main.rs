@@ -9,7 +9,7 @@ use cchain::commons::utility::{generate_template, get_paths};
 use cchain::display_control::{display_form, display_message, Level};
 use cchain::marker::reference::ChainReference;
 use cchain::{core::chain::Chain, marker::bookmark::Bookmark};
-use clap::Parser;
+use clap::{crate_version, Parser};
 
 fn main() -> Result<(), Error> {
     // Parse command line arguments
@@ -45,7 +45,7 @@ fn main() -> Result<(), Error> {
                     };
                 }
             }
-        }
+        },
         Commands::Add(subcommand) => {
             let path = Path::new(&subcommand.path);
 
@@ -124,7 +124,7 @@ fn main() -> Result<(), Error> {
             display_message(Level::Logging, "Bookmark registration is done.");
             bookmark.save();
             return Ok(());
-        }
+        },
         Commands::List(_) => {
             let references: &Vec<ChainReference> = &bookmark.get_chain_references();
             let mut form_data: Vec<Vec<String>> = Vec::new();
@@ -138,7 +138,7 @@ fn main() -> Result<(), Error> {
             }
 
             display_form(vec!["Index", "Name", "Path"], &form_data);
-        }
+        },
         Commands::Remove(subcommand) => {
             if subcommand.reset {
                 Bookmark::reset()?;
@@ -170,7 +170,7 @@ fn main() -> Result<(), Error> {
             }
 
             return Ok(());
-        }
+        },
         Commands::Check(subcommand) => {
             // If the input is parsable into an usize, it will use it as an
             // index to the bookmark. Otherwise, it will use it as a path
@@ -187,16 +187,24 @@ fn main() -> Result<(), Error> {
                     chain.validate_syntax()?;
                 }
             }
-        }
+        },
         Commands::New(subcommand) => {
             generate_template(subcommand.name.as_deref())?;
 
             return Ok(());
-        }
+        },
         Commands::Generate(_) => {
             display_message(
                 Level::Error,
                 "LLM generation feature has not yet implemented. Stay tuned. 😈",
+            );
+
+            return Ok(());
+        },
+        Commands::Version(_) => {
+            display_message(
+                Level::Logging,
+                &format!("cchain version: {}", crate_version!()),
             );
 
             return Ok(());

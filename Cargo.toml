@@ -2,7 +2,7 @@
 name = "cchain"
 version = "0.2.7"
 edition = "2021"
-description = "A command line chain execution tool"
+description = "A modern cli automation tool"
 authors =  ["Xinyu Bao <baoxinyuworks@163.com>"]
 readme = "README.md"
 repository = "https://github.com/aspadax/cchain"
