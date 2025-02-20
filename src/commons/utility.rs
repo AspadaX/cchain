@@ -1,13 +1,14 @@
-use std::collections::HashMap;
 use std::fs::DirEntry;
 use std::io::Write;
 
 use anyhow::{Error, Result};
+use async_openai::config::OpenAIConfig;
+use async_openai::types::ChatCompletionRequestMessageContentPartTextArgs;
+use async_openai::types::ChatCompletionRequestUserMessageArgs;
+use async_openai::types::CreateChatCompletionRequestArgs;
+use async_openai::types::CreateChatCompletionResponse;
+use async_openai::Client;
 
-use crate::core::interpreter::Interpreter;
-use crate::core::options::FailureHandlingOptions;
-use crate::core::options::StdoutStorageOptions;
-use crate::core::program::Program;
 use crate::display_control::display_message;
 use crate::display_control::Level;
 
@@ -26,54 +27,6 @@ pub fn get_paths(path: &std::path::Path) -> Result<Vec<DirEntry>, Error> {
     Ok(paths)
 }
 
-/// Generates a template configuration file.
-///
-/// This function creates a template configuration with example commands and arguments,
-/// serializes it to JSON, and writes it to a file named `cchain_template.json`.
-pub fn generate_template(name: Option<&str>) -> Result<(), Error> {
-    let filename = if let Some(name) = name {
-        "cchain_".to_string() + name + ".json"
-    } else {
-        "cchain_template.json".to_string()
-    };
-
-    // Create a template configuration
-    let template = vec![
-        Program::new(
-            "example_command".to_string(),
-            vec!["arg1".to_string(), "arg2".to_string()],
-            Some(HashMap::new()),
-            Some("<<hi>>".to_string()),
-            StdoutStorageOptions::default(),
-            Some(Interpreter::Sh),
-            FailureHandlingOptions::default(),
-            None,
-            3,
-        ),
-        Program::new(
-            "another_command".to_string(),
-            vec!["argA".to_string(), "argB".to_string()],
-            None,
-            None,
-            StdoutStorageOptions::default(),
-            None,
-            FailureHandlingOptions::default(),
-            None,
-            5,
-        ),
-    ];
-    // Serialize the template to JSON
-    let template_json = serde_json::to_string_pretty(&template)?;
-    // Write the template JSON to a file
-    std::fs::write(&filename, template_json)?;
-    display_message(
-        Level::Logging,
-        &format!("Template chain generated: {}", &filename),
-    );
-
-    Ok(())
-}
-
 pub fn input_message(prompt: &str) -> Result<String, Error> {
     // display the prompt message for inputting values
     display_message(Level::Input, prompt);
@@ -84,4 +37,47 @@ pub fn input_message(prompt: &str) -> Result<String, Error> {
     std::io::stdin().read_line(&mut input)?;
 
     Ok(input)
+}
+
+/// Generate a text with a given prompt. This function automatically resolves 
+/// the environment variables needed
+pub fn generate_text_with_llm(prompt: String) -> Result<String, Error> {
+    let runtime = tokio::runtime::Runtime::new()?;
+    let result = runtime.block_on(
+        async {
+            let api_base: String = std::env::var("CCHAIN_OPENAI_API_BASE")?;
+            let api_key: String = std::env::var("CCHAIN_OPENAI_API_KEY")?;
+            let model: String = std::env::var("CCHAIN_OPENAI_MODEL")?;
+
+            let llm_configuration: OpenAIConfig = OpenAIConfig::default()
+                .with_api_key(api_key)
+                .with_api_base(api_base);
+            let client: Client<OpenAIConfig> = async_openai::Client::with_config(llm_configuration);
+
+            let request = CreateChatCompletionRequestArgs::default()
+                .model(model)
+                .messages(vec![ChatCompletionRequestUserMessageArgs::default()
+                    .content(vec![
+                        ChatCompletionRequestMessageContentPartTextArgs::default()
+                            .text(prompt)
+                            .build()?
+                            .into(),
+                    ])
+                    .build()?
+                    .into()])
+                .build()?;
+
+            let response: CreateChatCompletionResponse =
+                match client.chat().create(request.clone()).await {
+                    std::result::Result::Ok(response) => response,
+                    Err(e) => {
+                        anyhow::bail!("Failed to execute function: {}", e);
+                    }
+                };
+            
+            return Ok(response.choices[0].clone().message.content.unwrap());
+        }
+    )?;
+
+    Ok(result)
 }

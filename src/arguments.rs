@@ -109,7 +109,7 @@ pub struct GenerateArguments {
     /// Generate a command line chain but with LLM
     /// making the chain.
     #[arg(group = "sources")]
-    pub llm: String,
+    pub prompt: String,
 }
 
 #[derive(Debug, Args)]

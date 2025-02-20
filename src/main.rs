@@ -237,7 +237,7 @@ fn main() -> Result<(), Error> {
 
             return Ok(());
         },
-        Commands::Generate(_) => {
+        Commands::Generate(subcommand) => {
             display_message(
                 Level::Error,
                 "LLM generation feature has not yet implemented. Stay tuned. 😈",
