@@ -4,7 +4,7 @@ use std::{collections::HashMap, process::Command};
 use anyhow::{Error, Result};
 use serde::{Deserialize, Serialize};
 
-use crate::display_control::{display_message, display_program_output, Level};
+use crate::display_control::{display_message, Level};
 
 use super::{
     interpreter::Interpreter,
@@ -163,6 +163,7 @@ impl Execution<CommandLineExecutionResult> for CommandLine {
         let mut reader = std::io::BufReader::new(stdout);
         let mut buffer: [u8; 1024] = [0; 1024];
     
+        display_message(Level::ProgramOutput, "======== Program output👇 ========");
         // Read output synchronously
         loop {
             // Clear the buffer
@@ -171,7 +172,7 @@ impl Execution<CommandLineExecutionResult> for CommandLine {
                 Ok(0) => break, // EOF
                 Ok(n) => {
                     let text = String::from_utf8_lossy(&buffer[..n]);
-                    display_program_output(&text);
+                    display_message(Level::ProgramOutput, &text);
                     collected_output.push_str(&text);
                 },
                 Err(error) => return Err(
@@ -179,6 +180,7 @@ impl Execution<CommandLineExecutionResult> for CommandLine {
                 )
             }
         }
+        display_message(Level::ProgramOutput, "======== Program output👆 ========");
     
         // Wait for process completion
         let status = child.wait()
