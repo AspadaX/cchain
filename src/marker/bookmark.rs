@@ -1,4 +1,4 @@
-use std::{path::PathBuf, str::FromStr};
+use std::{path::{Path, PathBuf}, str::FromStr};
 
 use anyhow::{anyhow, Error, Result};
 use dirs;
@@ -79,11 +79,10 @@ impl Bookmark {
         &mut self,
         configuration_path: &str,
     ) -> Result<(), Error> {
-        let chain_reference = ChainReference::from_str(configuration_path)?;
         if let Some(pos) = self
             .chain_references
             .iter()
-            .position(|x| x == &chain_reference)
+            .position(|x| x.get_chain_path_string() == configuration_path)
         {
             self.chain_references.remove(pos);
             Ok(())
@@ -93,6 +92,23 @@ impl Bookmark {
                 configuration_path
             ))
         }
+    }
+
+    /// Get all paths of the chains in the bookmark that are no longer exist
+    /// in their original positions
+    pub fn get_invalid_paths(&self) -> Result<Vec<String>, Error> {
+        let mut invalid_paths: Vec<String> = Vec::new();
+        for chain_reference in &self.chain_references {
+            let path_stirng = chain_reference.get_chain_path_string();
+            let path = Path::new(&path_stirng);
+
+            // Save the non-exist paths to the invalid paths vec
+            if !path.exists() {
+                invalid_paths.push(path_stirng);
+            }
+        }
+
+        Ok(invalid_paths)
     }
 
     pub fn get_chain_references(&self) -> &Vec<ChainReference> {

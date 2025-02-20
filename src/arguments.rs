@@ -2,8 +2,7 @@ use clap::{
     builder::{
         styling::{AnsiColor, Effects},
         Styles,
-    },
-    Args, Parser, Subcommand,
+    }, crate_authors, crate_version, crate_description, Args, Parser, Subcommand
 };
 
 // Configures Clap v3-style help menu colors
@@ -14,8 +13,8 @@ const STYLES: Styles = Styles::styled()
     .placeholder(AnsiColor::Cyan.on_default());
 
 #[derive(Debug, Parser)]
-#[command(name = "cchain")]
-#[command(about = "A modern CLI automation tool")]
+#[command(name = "cchain", author = crate_authors!(), long_version = crate_version!())]
+#[command(about = crate_description!())]
 #[command(styles = STYLES)]
 pub struct Arguments {
     /// Groupped features provided by `cchain`
@@ -34,6 +33,8 @@ pub enum Commands {
     /// Remove chain(s) to your bookmark
     #[clap(short_flag = 'r')]
     Remove(RemoveArguments),
+    /// Clean chain(s) that are removed/moved from the original path
+    Clean(CleanArguments),
     /// Validate the chain syntax
     Check(CheckArguments),
     /// Create a chain template
@@ -41,6 +42,9 @@ pub enum Commands {
     /// Generate a chain
     #[clap(short_flag = 'g')]
     Generate(GenerateArguments),
+    /// Check version info
+    #[clap(short_flag = 'v')]
+    Version(VersionArguments)
 }
 
 #[derive(Debug, Args)]
@@ -79,6 +83,10 @@ pub struct RemoveArguments {
 }
 
 #[derive(Debug, Args)]
+#[command(group = clap::ArgGroup::new("sources").required(false).multiple(false))]
+pub struct CleanArguments;
+
+#[derive(Debug, Args)]
 #[command(group = clap::ArgGroup::new("sources").required(true).multiple(false))]
 pub struct CheckArguments {
     /// A path to a chain, or an index in the bookmark
@@ -103,3 +111,7 @@ pub struct GenerateArguments {
     #[arg(group = "sources")]
     pub llm: String,
 }
+
+#[derive(Debug, Args)]
+#[command(group = clap::ArgGroup::new("sources").required(false).multiple(false))]
+pub struct VersionArguments;

@@ -98,13 +98,19 @@ impl Chain {
                 }
             }
             // Check the lifetime validity of the variables
-            for variable_involved in variables_involved {
-                let is_initialized = variable_involved
-                    .get_initialization_time()
-                    .is_initialized(index);
-
-                if !is_initialized {
-                    variables_used_without_being_initialized.push(variable_involved);
+            for variable_involved in &variables_involved {
+                if matches!(
+                    variable_involved.get_initialization_time(), 
+                    VariableInitializationTime::Await(_) | 
+                    VariableInitializationTime::OnProgramExecution(_)
+                ) 
+                {
+                    for variable in &self.variables {
+                        let variable = variable.lock().unwrap();
+                        if variable.get_variable_name() == variable_involved.get_variable_name() {
+                            variables_used_without_being_initialized.push(variable_involved.clone());
+                        }
+                    }
                 }
             }
         }
@@ -294,6 +300,10 @@ impl Chain {
                 (self.programs.len() - self.failed_program_executions.get())
             ),
         );
+    }
+
+    pub fn get_failed_program_execution_number(&self) -> usize {
+        self.failed_program_executions.get()
     }
 }
 

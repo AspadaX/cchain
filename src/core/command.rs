@@ -169,8 +169,8 @@ impl Execution<CommandLineExecutionResult> for CommandLine {
             buffer.fill(0);
             match reader.read(&mut buffer) {
                 Ok(0) => break, // EOF
-                Ok(_) => {
-                    let text = String::from_utf8_lossy(&buffer);
+                Ok(n) => {
+                    let text = String::from_utf8_lossy(&buffer[..n]);
                     display_program_output(&text);
                     collected_output.push_str(&text);
                 },
