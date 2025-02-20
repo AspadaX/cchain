@@ -1,16 +1,8 @@
-use std::str::FromStr;
+use std::{process::Command, str::FromStr};
 
-use async_openai::{
-    config::OpenAIConfig,
-    types::{
-        ChatCompletionRequestMessageContentPartTextArgs, ChatCompletionRequestUserMessageArgs,
-        CreateChatCompletionRequestArgs, CreateChatCompletionResponse,
-    },
-    Client,
-};
 use regex;
 
-use crate::display_control::{display_message, Level};
+use crate::{commons::utility::input_message, display_control::{display_message, Level}, generations::llm::LLM};
 
 pub struct Function {
     name: String,
@@ -67,106 +59,75 @@ impl Function {
     }
 
     fn llm_generate(&self) -> Result<String, anyhow::Error> {
-        let runtime = tokio::runtime::Runtime::new()?;
-        let result = runtime.block_on(
-            async {
-                let api_base: String = std::env::var("CCHAIN_OPENAI_API_BASE")?;
-                let api_key: String = std::env::var("CCHAIN_OPENAI_API_KEY")?;
-                let model: String = std::env::var("CCHAIN_OPENAI_MODEL")?;
+        // execute the second parameter in the terminal and then get the output
+        let command_output: String = if self.parameters.len() > 1 {
+            let parts: Vec<&str> = self.parameters[1].split_whitespace().collect();
+            let output = Command::new(parts[0])
+                .args(&parts[1..])
+                .output()
+                .expect("Failed to execute command");
 
-                let llm_configuration: OpenAIConfig = OpenAIConfig::default()
-                    .with_api_key(api_key)
-                    .with_api_base(api_base);
-                let client: Client<OpenAIConfig> = async_openai::Client::with_config(llm_configuration);
-
-                // execute the second parameter in the terminal and then get the output
-                let command_output: String = if self.parameters.len() > 1 {
-                    let parts: Vec<&str> = self.parameters[1].split_whitespace().collect();
-                    let output = tokio::process::Command::new(parts[0])
-                        .args(&parts[1..])
-                        .output()
-                        .await
-                        .expect("Failed to execute command");
-
-                    if !output.status.success() {
-                        // Check if the command failed
-                        let error_message = if !output.stderr.is_empty() {
-                            String::from_utf8_lossy(&output.stderr).to_string()
-                        } else {
-                            format!("Command exited with status: {}", output.status)
-                        };
-                        return Err(anyhow::anyhow!("Command failed: {}", error_message));
-                    }
-
-                    String::from_utf8_lossy(&output.stdout).to_string()
+            if !output.status.success() {
+                // Check if the command failed
+                let error_message = if !output.stderr.is_empty() {
+                    String::from_utf8_lossy(&output.stderr).to_string()
                 } else {
-                    String::new()
+                    format!("Command exited with status: {}", output.status)
+                };
+                return Err(anyhow::anyhow!("Command failed: {}", error_message));
+            }
+
+            String::from_utf8_lossy(&output.stdout).to_string()
+        } else {
+            String::new()
+        };
+
+        // Create an LLM instance for calling LLMs
+        let llm = LLM::new()?;
+        let prompt: String = format!("{}\n{}\n", self.parameters[0], command_output);
+
+        loop {
+            let response: String =
+                match llm.generate(prompt.clone()) {
+                    std::result::Result::Ok(response) => response,
+                    Err(e) => {
+                        anyhow::bail!("Failed to execute function: {}", e);
+                    }
                 };
 
-                let request = CreateChatCompletionRequestArgs::default()
-                    .model(model)
-                    .messages(vec![ChatCompletionRequestUserMessageArgs::default()
-                        .content(vec![
-                            ChatCompletionRequestMessageContentPartTextArgs::default()
-                                .text(format!("{}\n{}\n", self.parameters[0], command_output))
-                                .build()?
-                                .into(),
-                        ])
-                        .build()?
-                        .into()])
-                    .build()?;
+            display_message(
+                Level::ProgramOutput,
+                &format!(
+                    "Function executed successfully with result: {}",
+                    &response
+                ),
+            );
 
-                loop {
-                    let response: CreateChatCompletionResponse =
-                        match client.chat().create(request.clone()).await {
-                            std::result::Result::Ok(response) => response,
-                            Err(e) => {
-                                anyhow::bail!("Failed to execute function: {}", e);
-                            }
-                        };
+            let user_input: String = input_message(
+                "Do you want to proceed with this result? (yes/retry/abort)"
+            )?;
+            let user_input: String = user_input.trim().to_lowercase();
 
+            match user_input.as_str() {
+                "yes" => {
+                    // Proceed with the result
+                    return Ok(response);
+                }
+                "retry" => {
+                    // Retry the function execution
+                    continue;
+                }
+                "abort" => {
+                    anyhow::bail!("Execution aborted by the user");
+                }
+                _ => {
                     display_message(
-                        Level::ProgramOutput,
-                        &format!(
-                            "Function executed successfully with result: {}",
-                            response.choices[0].clone().message.content.unwrap()
-                        ),
+                        Level::Warn,
+                        "Invalid input, please enter 'yes', 'retry', or 'abort'.",
                     );
-
-                    display_message(
-                        Level::Logging,
-                        "Do you want to proceed with this result? (yes/retry/abort)",
-                    );
-
-                    let mut user_input = String::new();
-                    std::io::stdin()
-                        .read_line(&mut user_input)
-                        .expect("Failed to read input");
-                    let user_input = user_input.trim().to_lowercase();
-
-                    match user_input.as_str() {
-                        "yes" => {
-                            // Proceed with the result
-                            return Ok(response.choices[0].clone().message.content.unwrap());
-                        }
-                        "retry" => {
-                            // Retry the function execution
-                            continue;
-                        }
-                        "abort" => {
-                            anyhow::bail!("Execution aborted by the user");
-                        }
-                        _ => {
-                            display_message(
-                                Level::Warn,
-                                "Invalid input, please enter 'yes', 'retry', or 'abort'.",
-                            );
-                        }
-                    }
                 }
             }
-        )?;
+        }
 
-        return Ok(result);
     }
 }

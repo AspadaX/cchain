@@ -39,9 +39,6 @@ pub enum Commands {
     Check(CheckArguments),
     /// Create a chain template
     New(NewArguments),
-    /// Generate a chain
-    #[clap(short_flag = 'g')]
-    Generate(GenerateArguments),
     /// Check version info
     #[clap(short_flag = 'v')]
     Version(VersionArguments)
@@ -95,21 +92,16 @@ pub struct CheckArguments {
 }
 
 #[derive(Debug, Args)]
-#[command(group = clap::ArgGroup::new("sources").required(true).multiple(false))]
+#[command(group = clap::ArgGroup::new("sources").required(true).multiple(true))]
 pub struct NewArguments {
     /// Name the generated chain, by default,
     /// it will be a template file.
     #[arg(group = "sources")]
     pub name: Option<String>,
-}
-
-#[derive(Debug, Args)]
-#[command(group = clap::ArgGroup::new("sources").required(true).multiple(false))]
-pub struct GenerateArguments {
-    /// Generate a command line chain but with LLM
-    /// making the chain.
-    #[arg(group = "sources")]
-    pub prompt: String,
+    /// If specified, cchain will generate a chain by using a LLM provided
+    /// in the environment variables
+    #[arg(short, long, group = "sources")]
+    pub prompt: Option<String>,
 }
 
 #[derive(Debug, Args)]

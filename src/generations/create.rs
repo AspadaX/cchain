@@ -2,13 +2,14 @@ use std::collections::HashMap;
 
 use anyhow::{Error, Result};
 
-use crate::commons::utility::generate_text_with_llm;
 use crate::core::interpreter::Interpreter;
 use crate::core::options::FailureHandlingOptions;
 use crate::core::options::StdoutStorageOptions;
 use crate::core::program::Program;
 use crate::display_control::display_message;
 use crate::display_control::Level;
+
+use super::llm::LLM;
 
 pub struct ChainCreation {
     name: Option<String>,
@@ -59,23 +60,37 @@ impl ChainCreation {
     ///
     /// This function creates a template configuration with example commands and arguments,
     /// serializes it to JSON, and writes it to a file named `cchain_template.json`.
-    pub fn generate_template(&self) -> Result<(), Error> {
-        let filename: String = self.create_filename();
+    pub fn generate_template(&self) -> Result<String, Error> {
         // Serialize the template to JSON
         let template_json: String = serde_json::to_string_pretty(&self.template)?;
+
+        Ok(template_json)
+    }
+
+    /// Create a chain by using the LLM
+    pub fn generate_chain(&self, request: String) -> Result<String, Error> {
+        let prompt: String = format!(
+            "Your request is: {}\n Generate a json by learning from the following template: {}",
+            &request,
+            self.generate_template()?
+        );
+
+        let llm = LLM::new()?;
+        let result: String = llm.generate_json(prompt)?;
+
+        return Ok(result);
+    }
+
+    /// Write the generated chain
+    pub fn save(&self, json: String) -> Result<(), Error> {
+        let filename: String = self.create_filename();
         // Write the template JSON to a file
-        std::fs::write(&filename, template_json)?;
+        std::fs::write(&filename, json)?;
         display_message(
             Level::Logging,
             &format!("Template chain generated: {}", &filename),
         );
 
         Ok(())
-    }
-
-    pub fn generate_chain(&self) -> Result<(), Error> {
-        let prompt: String = format!();
-        let result: String = generate_text_with_llm(prompt)?;
-        return Ok(result);
     }
 }

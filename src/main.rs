@@ -5,8 +5,9 @@ use anyhow::{Error, Result};
 use cchain::arguments::*;
 use cchain::core::traits::Execution;
 use cchain::commons::naming::HumanReadable;
-use cchain::commons::utility::{generate_template, get_paths};
+use cchain::commons::utility::get_paths;
 use cchain::display_control::{display_form, display_message, Level};
+use cchain::generations::create::ChainCreation;
 use cchain::marker::reference::ChainReference;
 use cchain::{core::chain::Chain, marker::bookmark::Bookmark};
 use clap::{crate_version, Parser};
@@ -233,16 +234,24 @@ fn main() -> Result<(), Error> {
             }
         },
         Commands::New(subcommand) => {
-            generate_template(subcommand.name.as_deref())?;
-
-            return Ok(());
-        },
-        Commands::Generate(subcommand) => {
+            let result: String;
+            let creation = ChainCreation::new(subcommand.name);
             display_message(
-                Level::Error,
-                "LLM generation feature has not yet implemented. Stay tuned. 😈",
+                Level::Logging,
+                &format!(
+                    "{} will be created...", creation.create_filename()
+                )
             );
+            
+            if let Some(prompt) = subcommand.prompt {
+                result = creation.generate_chain(
+                    prompt
+                )?;
+            } else {
+                result = creation.generate_template()?;
+            }
 
+            creation.save(result)?;
             return Ok(());
         },
         Commands::Version(_) => {
