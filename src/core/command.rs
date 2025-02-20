@@ -4,7 +4,7 @@ use std::{collections::HashMap, process::Command};
 use anyhow::{Error, Result};
 use serde::{Deserialize, Serialize};
 
-use crate::display_control::{display_message, display_program_output, Level};
+use crate::display_control::{display_message, Level};
 
 use super::{
     interpreter::Interpreter,
