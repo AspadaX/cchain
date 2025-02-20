@@ -163,7 +163,7 @@ impl Execution<CommandLineExecutionResult> for CommandLine {
         let mut reader = std::io::BufReader::new(stdout);
         let mut buffer: [u8; 1024] = [0; 1024];
     
-        display_message(Level::ProgramOutput, "Program output 👇");
+        display_message(Level::ProgramOutput, "Program output 👇👇👇👇👇👇👇👇👇👇");
         // Read output synchronously
         loop {
             // Clear the buffer
@@ -180,7 +180,7 @@ impl Execution<CommandLineExecutionResult> for CommandLine {
                 )
             }
         }
-        display_message(Level::ProgramOutput, "Program output 👆");
+        display_message(Level::ProgramOutput, "Program output 👆👆👆👆👆👆👆👆👆👆");
     
         // Wait for process completion
         let status = child.wait()
