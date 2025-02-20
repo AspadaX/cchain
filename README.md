@@ -179,7 +179,9 @@ cchain new setup --prompt "Clone repo, install deps, start services"
 
 ## 📚 Documentation
 
-To be added.
+**Guides**  
+- [Full JSON Schema](docs/JSON_schema.md)
+- [LLM Configuration](docs/LLM_setup.md)
 
 ---
 
