@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
 use anyhow::{Error, Result};
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::core::interpreter::Interpreter;
 use crate::core::options::FailureHandlingOptions;
@@ -10,6 +12,11 @@ use crate::display_control::display_message;
 use crate::display_control::Level;
 
 use super::llm::LLM;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ParsedCommands {
+    pub commands: Vec<Program>,
+}
 
 pub struct ChainCreation {
     name: Option<String>,
@@ -70,15 +77,19 @@ impl ChainCreation {
     /// Create a chain by using the LLM
     pub fn generate_chain(&self, request: String) -> Result<String, Error> {
         let prompt: String = format!(
-            "Your request is: {}\n Generate a json by learning from the following template: {}",
+            "Your request is: {}\n Generate a json by strictly following this template: ```json\n{}\n```",
             &request,
             self.generate_template()?
         );
 
         let llm = LLM::new()?;
         let result: String = llm.generate_json(prompt)?;
-
-        return Ok(result);
+        
+        // Parse the string 
+        let parsed_commands: ParsedCommands = serde_json::from_str(&result)?;
+        let commands: String = serde_json::to_string_pretty(&parsed_commands.commands)?;
+        
+        return Ok(commands);
     }
 
     /// Write the generated chain
