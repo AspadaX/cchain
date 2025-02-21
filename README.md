@@ -146,7 +146,6 @@ cchain new your_file_name
 | **Retry Logic**      | ✅ Built-in    | ❌ Manual      | ❌ Manual      | ❌ Manual      |
 | **AI Integration**   | ✅ Native      | ❌ None        | ❌ None        | ❌ Add-ons     |
 | **Cross-Platform**   | ✅ Single Bin | ✅ (Fragile)  | ✅             | ✅ (If setup)  |
-| **Speed**            | 0.05s cold     | 0.01s          | 0.02s          | 0.5s+          |
 | **Learning Curve**   | Low (JSON)     | High           | Medium         | High           |
 
 ---
