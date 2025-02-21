@@ -19,14 +19,25 @@ pub struct ParsedCommands {
 }
 
 pub struct ChainCreation {
-    name: Option<String>,
-    template: Vec<Program>
+    name: Option<String>
 }
 
 impl ChainCreation {
 
     pub fn new(name: Option<String>) -> Self {
-        // Create a template configuration
+        Self { name }
+    }
+
+    pub fn create_filename(&self) -> String {
+        if let Some(name) = &self.name {
+            return "cchain_".to_string() + name + ".json";
+        } else {
+            return "cchain_template.json".to_string();
+        }
+    }
+    
+    /// Get a template objects in Vec<Program>
+    pub fn get_template_objects(&self) -> Vec<Program> {
         let template = vec![
             Program::new(
                 "example_command".to_string(),
@@ -52,34 +63,21 @@ impl ChainCreation {
             ),
         ];
 
-        Self { name, template }
+        template
     }
 
-    pub fn create_filename(&self) -> String {
-        if let Some(name) = &self.name {
-            return "cchain_".to_string() + name + ".json";
-        } else {
-            return "cchain_template.json".to_string();
-        }
-    }
-
-    /// Generates a template configuration file.
-    ///
-    /// This function creates a template configuration with example commands and arguments,
-    /// serializes it to JSON, and writes it to a file named `cchain_template.json`.
+    /// Generates a template configuration.
     pub fn generate_template(&self) -> Result<String, Error> {
-        // Serialize the template to JSON
-        let template_json: String = serde_json::to_string_pretty(&self.template)?;
-
-        Ok(template_json)
+        Ok(serde_json::to_string_pretty::<Vec<Program>>(&self.get_template_objects())?)
     }
 
     /// Create a chain by using the LLM
     pub fn generate_chain(&self, request: String) -> Result<String, Error> {
+        let template = ParsedCommands { commands: self.get_template_objects() };
         let prompt: String = format!(
-            "Your request is: {}\n Generate a json by strictly following this template: ```json\n{}\n```",
+            "Your request is: {}\n Generate a json by strictly following this template: {}",
             &request,
-            self.generate_template()?
+            serde_json::to_string_pretty::<ParsedCommands>(&template)?
         );
 
         let llm = LLM::new()?;
@@ -87,9 +85,9 @@ impl ChainCreation {
         
         // Parse the string 
         let parsed_commands: ParsedCommands = serde_json::from_str(&result)?;
-        let commands: String = serde_json::to_string_pretty(&parsed_commands.commands)?;
+        let commands_string: String = serde_json::to_string_pretty(&parsed_commands.commands)?;
         
-        return Ok(commands);
+        return Ok(commands_string);
     }
 
     /// Write the generated chain
