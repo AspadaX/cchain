@@ -86,10 +86,18 @@ impl ChainCreation {
         let result: String = llm.generate_json(prompt)?;
         
         // Parse the string 
-        let parsed_commands: ParsedCommands = serde_json::from_str(&result)?;
-        let commands: String = serde_json::to_string_pretty(&parsed_commands.commands)?;
+        let programs: Vec<Program> = match serde_json::from_str(&result) {
+            Ok(result) => result,
+            Err(_) => {
+                let parsed_commands: ParsedCommands = serde_json::from_str(&result)?;
+
+                parsed_commands.commands
+            }
+        };
+
+        let commands_string: String = serde_json::to_string_pretty(&programs)?;
         
-        return Ok(commands);
+        return Ok(commands_string);
     }
 
     /// Write the generated chain
