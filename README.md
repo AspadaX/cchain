@@ -107,6 +107,14 @@ cchain run ./cchain_deploy.json
 cchain add ./cchain_deploy.json  # Bookmark it as workflow #0
 cchain run 0  # Re-run anytime
 ```
+### 4. Access Public Chains
+You may also want to share your chain, or find chains created by someone else. I hosted a GitHub repository for this purpose:
+
+```bash
+git clone https://github.com/AspadaX/cchain-chains
+```
+
+It is much welcomed to PR new chains to this repository!
 
 ---
 
