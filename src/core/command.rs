@@ -4,7 +4,7 @@ use std::sync::mpsc::channel;
 use std::{collections::HashMap, process::Command};
 
 use anyhow::{Error, Result};
-use console::Term;
+use console::{StyledObject, Term};
 use serde::{Deserialize, Serialize};
 
 use crate::display_control::{display_command_line, display_message, Level};
@@ -143,9 +143,11 @@ impl Execution<CommandLineExecutionResult> for CommandLine {
         // Set stdout to piped so that we can capture it
         command.stdout(std::process::Stdio::piped());
         command.stderr(std::process::Stdio::piped());
+        let command_in_text: String = format!(r#"{}"#, &self.to_string());
+        let command_string: &StyledObject<&String> = &console::style(&command_in_text).bold();
         display_message(
             Level::Logging, 
-            &format!("Start executing command: {}", &self)
+            &format!("Start executing command: {}", command_string)
         );
     
         // Spawn the process
