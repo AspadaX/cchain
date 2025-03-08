@@ -1,4 +1,6 @@
 use std::io::{BufReader, Read};
+use std::process::{ChildStderr, ChildStdout};
+use std::sync::mpsc::channel;
 use std::{collections::HashMap, process::Command};
 
 use anyhow::{Error, Result};
@@ -158,52 +160,54 @@ impl Execution<CommandLineExecutionResult> for CommandLine {
         // Take the stdout handle
         let stdout = child
             .stdout
-            .as_mut()
+            .take()
             .unwrap();
         // Take the stderr handle
         let stderr = child
             .stderr
-            .as_mut()
+            .take()
             .unwrap();
-    
-        let mut collected_output = String::new();
-        let mut reader: BufReader<&mut std::process::ChildStdout> = BufReader::new(stdout);
-        let mut reader_stderr: BufReader<&mut std::process::ChildStderr> = BufReader::new(stderr);
-        let mut buffer: [u8; 1024] = [0; 1024];
-    
-        let terminal = Term::stdout();
-        // Read output synchronously
-        loop {
-            // Clear the buffer
-            buffer.fill(0);
-            match reader.read(&mut buffer) {
-                Ok(0) => break, // EOF
-                Ok(n) => {
-                    let text = String::from_utf8_lossy(&buffer[..n]);
-                    display_command_line(&terminal, &text);
-                    collected_output.push_str(&text);
-                },
-                Err(error) => return Err(
-                    Error::msg(format!("Failed to read stdout: {}", error))
-                )
-            }
-        }
         
-        // Read stderr synchronously. 
-        // We don't record stderr for now.
-        loop {
-            // Clear the buffer
-            buffer.fill(0);
-            match reader_stderr.read(&mut buffer) {
-                Ok(0) => break, // EOF
-                Ok(n) => {
-                    let text = String::from_utf8_lossy(&buffer[..n]);
-                    display_command_line(&terminal, &text);
-                },
-                Err(error) => return Err(
-                    Error::msg(format!("Failed to read stderr: {}", error))
-                )
+        let (tx, rx) = channel();
+    
+        // Spawn a thread to read stdout
+        let tx_clone = tx.clone();
+        std::thread::spawn(move || {
+            let mut reader = BufReader::new(stdout);
+            let mut buffer = [0; 1024];
+            loop {
+                match reader.read(&mut buffer) {
+                    Ok(0) => break, // EOF
+                    Ok(n) => {
+                        let text = String::from_utf8_lossy(&buffer[..n]).to_string();
+                        tx_clone.send(text).unwrap();
+                    },
+                    Err(_) => break,
+                }
             }
+        });
+    
+        // Spawn a thread to read stderr
+        std::thread::spawn(move || {
+            let mut reader = BufReader::new(stderr);
+            let mut buffer = [0; 1024];
+            loop {
+                match reader.read(&mut buffer) {
+                    Ok(0) => break, // EOF
+                    Ok(n) => {
+                        let text = String::from_utf8_lossy(&buffer[..n]).to_string();
+                        tx.send(text).unwrap();
+                    },
+                    Err(_) => break,
+                }
+            }
+        });
+        
+        let mut collected_output = String::new();
+        let terminal = Term::stdout();
+        for received in rx {
+            display_command_line(&terminal, &received);
+            collected_output.push_str(&received);
         }
     
         // Wait for process completion
