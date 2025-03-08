@@ -1,4 +1,4 @@
-use std::io::Read;
+use std::io::{BufReader, Read};
 use std::{collections::HashMap, process::Command};
 
 use anyhow::{Error, Result};
@@ -136,10 +136,11 @@ impl Execution<CommandLineExecutionResult> for CommandLine {
     }
 
     fn execute(&mut self) -> Result<Vec<CommandLineExecutionResult>, Error> {
-        let mut command = self.get_process_command();
+        let mut command: Command = self.get_process_command();
         
         // Set stdout to piped so that we can capture it
         command.stdout(std::process::Stdio::piped());
+        command.stderr(std::process::Stdio::piped());
         display_message(
             Level::Logging, 
             &format!("Start executing command: {}", &self)
@@ -159,9 +160,15 @@ impl Execution<CommandLineExecutionResult> for CommandLine {
             .stdout
             .as_mut()
             .unwrap();
+        // Take the stderr handle
+        let stderr = child
+            .stderr
+            .as_mut()
+            .unwrap();
     
         let mut collected_output = String::new();
-        let mut reader = std::io::BufReader::new(stdout);
+        let mut reader: BufReader<&mut std::process::ChildStdout> = BufReader::new(stdout);
+        let mut reader_stderr: BufReader<&mut std::process::ChildStderr> = BufReader::new(stderr);
         let mut buffer: [u8; 1024] = [0; 1024];
     
         let terminal = Term::stdout();
@@ -178,6 +185,23 @@ impl Execution<CommandLineExecutionResult> for CommandLine {
                 },
                 Err(error) => return Err(
                     Error::msg(format!("Failed to read stdout: {}", error))
+                )
+            }
+        }
+        
+        // Read stderr synchronously. 
+        // We don't record stderr for now.
+        loop {
+            // Clear the buffer
+            buffer.fill(0);
+            match reader_stderr.read(&mut buffer) {
+                Ok(0) => break, // EOF
+                Ok(n) => {
+                    let text = String::from_utf8_lossy(&buffer[..n]);
+                    display_command_line(&terminal, &text);
+                },
+                Err(error) => return Err(
+                    Error::msg(format!("Failed to read stderr: {}", error))
                 )
             }
         }
