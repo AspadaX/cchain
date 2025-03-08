@@ -1,8 +1,9 @@
 use std::{process::Command, str::FromStr};
 
+use console::Term;
 use regex;
 
-use crate::{commons::utility::input_message, display_control::{display_message, Level}, generations::llm::LLM};
+use crate::{commons::utility::input_message, display_control::{display_command_line, display_message, Level}, generations::llm::LLM};
 
 pub struct Function {
     name: String,
@@ -98,10 +99,10 @@ impl Function {
             display_message(
                 Level::Logging,
                 &format!(
-                    "Function executed successfully with result: {}",
-                    &response
+                    "Function executed successfully with result: "
                 ),
             );
+            display_command_line(&Term::stdout(), &response);
 
             let user_input: String = input_message(
                 "Do you want to proceed with this result? (yes/retry/abort)"
