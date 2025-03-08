@@ -146,7 +146,7 @@ impl Program {
                 ),
             );
 
-            // Execute the function asynchronously and await the result
+            // Execute the function 
             let result: String = function.execute()?;
             self.command_line.revise_argument_by_index(index, result);
             display_message(

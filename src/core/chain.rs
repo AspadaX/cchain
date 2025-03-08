@@ -3,13 +3,10 @@ use std::{cell::Cell, sync::{Arc, Mutex, MutexGuard}, thread};
 use anyhow::{anyhow, Error, Result};
 
 use crate::{
-    core::{
+    commons::utility::input_message, core::{
         program::Program,
         traits::{Execution, ExecutionType},
-    },
-    commons::utility::input_message,
-    display_control::{display_message, Level},
-    variable::{Variable, VariableGroupControl, VariableInitializationTime},
+    }, display_control::{display_message, display_tree_message, Level}, variable::{Variable, VariableGroupControl, VariableInitializationTime}
 };
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -440,8 +437,8 @@ impl Execution<ChainExecutionResult> for Chain {
                     // Push the program to the concurrency group, 
                     // if the concurrency group is not eligible for execution
                     concurrency_group.push(self.programs[i].clone());
-                    display_message(
-                        Level::Logging, 
+                    display_tree_message(
+                        0, 
                         &format!(
                             "Concurrent program, {}, is collected...", 
                             this_program.get_command_line()

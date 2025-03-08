@@ -1,10 +1,13 @@
-use std::io::Read;
+use std::io::{BufReader, Read};
+use std::process::{ChildStderr, ChildStdout};
+use std::sync::mpsc::channel;
 use std::{collections::HashMap, process::Command};
 
 use anyhow::{Error, Result};
+use console::{StyledObject, Term};
 use serde::{Deserialize, Serialize};
 
-use crate::display_control::{display_message, Level};
+use crate::display_control::{display_command_line, display_message, Level};
 
 use super::{
     interpreter::Interpreter,
@@ -135,13 +138,16 @@ impl Execution<CommandLineExecutionResult> for CommandLine {
     }
 
     fn execute(&mut self) -> Result<Vec<CommandLineExecutionResult>, Error> {
-        let mut command = self.get_process_command();
+        let mut command: Command = self.get_process_command();
         
         // Set stdout to piped so that we can capture it
         command.stdout(std::process::Stdio::piped());
+        command.stderr(std::process::Stdio::piped());
+        let command_in_text: String = format!(r#"{}"#, &self.to_string());
+        let command_string: &StyledObject<&String> = &console::style(&command_in_text).bold();
         display_message(
             Level::Logging, 
-            &format!("Start executing command: {}", &self)
+            &format!("Start executing command: {}", command_string)
         );
     
         // Spawn the process
@@ -156,31 +162,55 @@ impl Execution<CommandLineExecutionResult> for CommandLine {
         // Take the stdout handle
         let stdout = child
             .stdout
-            .as_mut()
+            .take()
             .unwrap();
+        // Take the stderr handle
+        let stderr = child
+            .stderr
+            .take()
+            .unwrap();
+        
+        let (tx, rx) = channel();
     
-        let mut collected_output = String::new();
-        let mut reader = std::io::BufReader::new(stdout);
-        let mut buffer: [u8; 1024] = [0; 1024];
-    
-        display_message(Level::ProgramOutput, "======== Program output👇 ========");
-        // Read output synchronously
-        loop {
-            // Clear the buffer
-            buffer.fill(0);
-            match reader.read(&mut buffer) {
-                Ok(0) => break, // EOF
-                Ok(n) => {
-                    let text = String::from_utf8_lossy(&buffer[..n]);
-                    display_message(Level::ProgramOutput, &text);
-                    collected_output.push_str(&text);
-                },
-                Err(error) => return Err(
-                    Error::msg(format!("Failed to read stdout: {}", error))
-                )
+        // Spawn a thread to read stdout
+        let tx_clone = tx.clone();
+        std::thread::spawn(move || {
+            let mut reader = BufReader::new(stdout);
+            let mut buffer = [0; 1024];
+            loop {
+                match reader.read(&mut buffer) {
+                    Ok(0) => break, // EOF
+                    Ok(n) => {
+                        let text = String::from_utf8_lossy(&buffer[..n]).to_string();
+                        tx_clone.send(text).unwrap();
+                    },
+                    Err(_) => break,
+                }
             }
+        });
+    
+        // Spawn a thread to read stderr
+        std::thread::spawn(move || {
+            let mut reader = BufReader::new(stderr);
+            let mut buffer = [0; 1024];
+            loop {
+                match reader.read(&mut buffer) {
+                    Ok(0) => break, // EOF
+                    Ok(n) => {
+                        let text = String::from_utf8_lossy(&buffer[..n]).to_string();
+                        tx.send(text).unwrap();
+                    },
+                    Err(_) => break,
+                }
+            }
+        });
+        
+        let mut collected_output = String::new();
+        let terminal = Term::stdout();
+        for received in rx {
+            display_command_line(&terminal, &received);
+            collected_output.push_str(&received);
         }
-        display_message(Level::ProgramOutput, "======== Program output👆 ========");
     
         // Wait for process completion
         let status = child.wait()
@@ -193,7 +223,7 @@ impl Execution<CommandLineExecutionResult> for CommandLine {
             )));
         }
     
-        display_message(Level::Logging, &format!("Finished executing command: {}", &self));
+        display_message(Level::Logging, &format!("Finished executing command: {}", command_string));
     
         Ok(vec![CommandLineExecutionResult::new(collected_output)])
     }
