@@ -96,7 +96,7 @@ impl Function {
                 };
 
             display_message(
-                Level::ProgramOutput,
+                Level::Logging,
                 &format!(
                     "Function executed successfully with result: {}",
                     &response

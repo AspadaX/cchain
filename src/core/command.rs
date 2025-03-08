@@ -2,9 +2,10 @@ use std::io::Read;
 use std::{collections::HashMap, process::Command};
 
 use anyhow::{Error, Result};
+use console::Term;
 use serde::{Deserialize, Serialize};
 
-use crate::display_control::{display_message, Level};
+use crate::display_control::{display_command_line, display_message, Level};
 
 use super::{
     interpreter::Interpreter,
@@ -163,7 +164,7 @@ impl Execution<CommandLineExecutionResult> for CommandLine {
         let mut reader = std::io::BufReader::new(stdout);
         let mut buffer: [u8; 1024] = [0; 1024];
     
-        display_message(Level::ProgramOutput, "======== Program output👇 ========");
+        let terminal = Term::stdout();
         // Read output synchronously
         loop {
             // Clear the buffer
@@ -172,7 +173,7 @@ impl Execution<CommandLineExecutionResult> for CommandLine {
                 Ok(0) => break, // EOF
                 Ok(n) => {
                     let text = String::from_utf8_lossy(&buffer[..n]);
-                    display_message(Level::ProgramOutput, &text);
+                    display_command_line(&terminal, &text);
                     collected_output.push_str(&text);
                 },
                 Err(error) => return Err(
@@ -180,7 +181,6 @@ impl Execution<CommandLineExecutionResult> for CommandLine {
                 )
             }
         }
-        display_message(Level::ProgramOutput, "======== Program output👆 ========");
     
         // Wait for process completion
         let status = child.wait()
