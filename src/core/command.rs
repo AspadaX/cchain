@@ -223,7 +223,7 @@ impl Execution<CommandLineExecutionResult> for CommandLine {
             )));
         }
     
-        display_message(Level::Logging, &format!("Finished executing command: {}", &self));
+        display_message(Level::Logging, &format!("Finished executing command: {}", command_string));
     
         Ok(vec![CommandLineExecutionResult::new(collected_output)])
     }
