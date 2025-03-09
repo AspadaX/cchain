@@ -1,5 +1,4 @@
 use std::io::{BufReader, Read};
-use std::process::{ChildStderr, ChildStdout};
 use std::sync::mpsc::channel;
 use std::{collections::HashMap, process::Command};
 
@@ -43,6 +42,9 @@ pub struct CommandLine {
     /// Each entry maps a variable name to its override value for this
     /// execution.
     environment_variables_override: Option<HashMap<String, String>>,
+    /// Set the working directory for this program. 
+    /// Null means the current working directory.
+    working_directory: Option<String>,
 }
 
 impl Default for CommandLine {
@@ -52,6 +54,7 @@ impl Default for CommandLine {
             arguments: vec![],
             interpreter: None,
             environment_variables_override: None,
+            working_directory: None,
         }
     }
 }
@@ -62,14 +65,17 @@ impl CommandLine {
         arguments: Vec<String>,
         interpreter: Option<Interpreter>,
         environment_variables_override: Option<HashMap<String, String>>,
+        working_directory: Option<String>,
     ) -> Self {
         Self {
             command,
             arguments,
             interpreter,
             environment_variables_override,
+            working_directory
         }
     }
+    
     /// Constructs a Tokio process command to execute the configured program.
     ///
     /// It determines the interpreter to use based on the user specification.
@@ -81,6 +87,7 @@ impl CommandLine {
             Some(Interpreter::Sh) => {
                 // Use `sh` if the user has specified.
                 let mut cmd = Command::new("sh");
+                
                 let command_line: String = {
                     let command: String = self.get_command().to_string();
                     let arguments: String = self.get_arguments().join(" ");
@@ -90,12 +97,17 @@ impl CommandLine {
                 cmd
             }
             _ => {
-                // On non-Unix systems, execute the command directly.
+                // On non-Unix systems and not specified cases, execute the command directly.
                 let mut cmd = Command::new(self.get_command());
                 cmd.args(self.get_arguments());
                 cmd
             }
         };
+        
+        // Set the working directory for the command.
+        if let Some(working_directory) = &self.working_directory {
+            command.current_dir(working_directory);
+        }
 
         // Override environment variables if provided.
         if let Some(ref env_vars) = self.environment_variables_override {
