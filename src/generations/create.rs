@@ -87,7 +87,8 @@ impl ChainCreation {
             1. **Define Execution Steps**: 
                Create a list of program objects with fields:
                - `command`: Main executable (e.g., "python")
-               - `arguments`: Parameters including {{variable}} placeholders
+               - `arguments`: Parameters including <<variable>> placeholders
+               - `working_directory`: Path to run the command in. Leave null for current directory. 
                - `interpreter`: Shell to use (e.g., "sh") or null for direct execution
                - `environment_variables_override`: Key-value pairs to override env vars
                - `stdout_stored_to`: Variable name to store output (supports <<>> syntax)
