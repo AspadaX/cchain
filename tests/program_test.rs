@@ -12,6 +12,7 @@ mod tests {
             vec!["test".to_string()],
             None,
             None,
+            None,
             StdoutStorageOptions::default(),
             None,
             FailureHandlingOptions::default(),
@@ -30,6 +31,7 @@ mod tests {
             vec![],
             None,
             None,
+            None,
             StdoutStorageOptions::default(),
             None,
             FailureHandlingOptions::default(),
@@ -45,6 +47,7 @@ mod tests {
         let mut program = Program::new(
             "printf".to_string(),
             vec!["test\n".to_string()],
+            None,
             None,
             None,
             StdoutStorageOptions {
@@ -67,6 +70,7 @@ mod tests {
             vec!["test".to_string()],
             None,
             None,
+            None,
             StdoutStorageOptions::default(),
             None,
             FailureHandlingOptions {
@@ -76,6 +80,7 @@ mod tests {
                         "echo".to_string(), 
                         vec!["hello".to_string()], 
                         Some(Interpreter::Sh), 
+                        None,
                         None
                     )
                 )
@@ -102,6 +107,7 @@ mod tests {
         let program = Program::new(
             "echo".to_string(),
             vec!["${{env::TEST_ARG_FUNCTION}}".to_string()],
+            None,
             None,
             None,
             StdoutStorageOptions::default(),

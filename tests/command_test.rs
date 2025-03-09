@@ -12,6 +12,7 @@ mod tests {
             vec!["%s".to_string(), "test".to_string()],
             Some(Interpreter::Sh),
             None,
+            None,
         );
         let results = cmd.execute()?;
         assert_eq!(results.len(), 1);
@@ -29,6 +30,7 @@ mod tests {
             vec!["-c".to_string(), "echo $TEST_VAR".to_string()],
             None,
             Some(env_vars),
+            None,
         );
         let results = cmd.execute()?;
         assert_eq!(results.len(), 1);
@@ -41,6 +43,7 @@ mod tests {
         let mut cmd = CommandLine::new(
             "echo".to_string(),
             vec!["Hello, <<NAME>>!".to_string()],
+            None,
             None,
             None,
         );
@@ -56,6 +59,7 @@ mod tests {
             vec!["old".to_string()],
             None,
             None,
+            None,
         );
         cmd.revise_argument_by_index(0, "new".to_string());
         assert_eq!(*cmd.get_arguments(), vec!["new".to_string()]);
@@ -67,6 +71,7 @@ mod tests {
         let mut cmd = CommandLine::new(
             "nonexistentcommand".to_string(),
             vec!["".to_string()],
+            None,
             None,
             None,
         );
