@@ -14,6 +14,7 @@ This template contains all the available JSON schema elements in `cchain`. Below
       "arg1",
       "arg2"
     ],
+    "working_directory": "/path/to/work/directory", // The directory where the command will be executed.
     "interpreter": "Sh", // A terminal interpreter to use. If you use `sh`, then put `sh` here. Leaving the field empty or null will disable the interpreter.
     "environment_variables_override": { // An object containing environment variables to override. If you want to override the environment variables, put them here.
       "hello": "world", // This will set hello environment variable to world
@@ -39,6 +40,7 @@ This template contains all the available JSON schema elements in `cchain`. Below
       "argA",
       "argB"
     ],
+    "working_directory": null, // Leave it null to use the current working directory.
     "interpreter": null,
     "environment_variables_override": null,
     "stdout_stored_to": null,

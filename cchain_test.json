@@ -1,0 +1,44 @@
+[
+  {
+    "command": "example_command",
+    "arguments": [
+      "arg1",
+      "arg2"
+    ],
+    "interpreter": "Sh",
+    "environment_variables_override": {
+      "this_is_a_key": "this_is_a_value"
+    },
+    "working_directory": null,
+    "stdout_stored_to": "<<this_is_a_variable>>",
+    "stdout_storage_options": {
+      "without_newline_characters": true
+    },
+    "failure_handling_options": {
+      "exit_on_failure": true,
+      "remedy_command_line": null
+    },
+    "concurrency_group": null,
+    "retry": 3
+  },
+  {
+    "command": "another_command",
+    "arguments": [
+      "argA",
+      "argB"
+    ],
+    "interpreter": null,
+    "environment_variables_override": null,
+    "working_directory": null,
+    "stdout_stored_to": null,
+    "stdout_storage_options": {
+      "without_newline_characters": true
+    },
+    "failure_handling_options": {
+      "exit_on_failure": true,
+      "remedy_command_line": null
+    },
+    "concurrency_group": null,
+    "retry": 5
+  }
+]
