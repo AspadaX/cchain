@@ -365,6 +365,9 @@ impl Execution<ChainExecutionResult> for Chain {
             let mut awaitable_variable: Option<String> = None;
             let mut awaitable_value: Option<String> = None;
 
+            // Insert available variables from the chain into the program's context.
+            self.insert_variable(i)?;
+
             // Create a single block for clearing the mut ref to the
             // self.programs.
             {
@@ -373,9 +376,6 @@ impl Execution<ChainExecutionResult> for Chain {
                 // Process any functions provided as arguments for the program.
                 program.execute_argument_functions()?;
             }
-
-            // Insert available variables from the chain into the program's context.
-            self.insert_variable(i)?;
 
             // Get the number of programs that are currently added to the 
             // concurrent group for executions

@@ -59,6 +59,7 @@ impl Program {
         command: String,
         arguments: Vec<String>,
         environment_variables_override: Option<HashMap<String, String>>,
+        working_directory: Option<String>,
         stdout_stored_to: Option<String>,
         stdout_storage_options: StdoutStorageOptions,
         interpreter: Option<Interpreter>,
@@ -72,6 +73,7 @@ impl Program {
                 arguments,
                 interpreter,
                 environment_variables_override,
+                working_directory,
             ),
             stdout_stored_to,
             stdout_storage_options,
@@ -187,7 +189,13 @@ impl FromStr for Program {
         let arguments = parts[1..].iter().map(|s| s.to_string()).collect();
 
         Ok(Self {
-            command_line: CommandLine::new(command, arguments, None, None),
+            command_line: CommandLine::new(
+                command,
+                arguments,
+                None, // Option<Interpreter>
+                None, // Option<HashMap<String, String>>
+                None  // Option<String>
+            ),
             ..Default::default()
         })
     }

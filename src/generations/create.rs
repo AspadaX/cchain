@@ -38,12 +38,17 @@ impl ChainCreation {
     
     /// Get a template objects in Vec<Program>
     pub fn get_template_objects(&self) -> Vec<Program> {
+        
+        let mut example_environment_variable: HashMap<String, String> = HashMap::new();
+        example_environment_variable.insert("this_is_a_key".to_string(), "this_is_a_value".to_string());
+        
         let template = vec![
             Program::new(
                 "example_command".to_string(),
                 vec!["arg1".to_string(), "arg2".to_string()],
-                Some(HashMap::new()),
-                Some("<<hi>>".to_string()),
+                Some(example_environment_variable),
+                None,
+                Some("<<this_is_a_variable>>".to_string()),
                 StdoutStorageOptions::default(),
                 Some(Interpreter::Sh),
                 FailureHandlingOptions::default(),
@@ -53,6 +58,7 @@ impl ChainCreation {
             Program::new(
                 "another_command".to_string(),
                 vec!["argA".to_string(), "argB".to_string()],
+                None,
                 None,
                 None,
                 StdoutStorageOptions::default(),

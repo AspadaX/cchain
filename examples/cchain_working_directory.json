@@ -1,9 +1,13 @@
 [
   {
-    "command": "git",
+    "command": "mkdir",
     "arguments": [
-      "fetch"
+      "test_dir"
     ],
+    "interpreter": null, 
+    "environment_variables_override": null,
+    "working_directory": "../",
+    "stdout_stored_to": null,
     "stdout_storage_options": {
       "without_newline_characters": true
     },
@@ -11,13 +15,18 @@
       "exit_on_failure": true,
       "remedy_command_line": null
     },
+    "concurrency_group": null,
     "retry": 0
   },
   {
-    "command": "git",
+    "command": "echo",
     "arguments": [
-      "pull"
+      "Directory has been created."
     ],
+    "interpreter": null,
+    "environment_variables_override": null,
+    "working_directory": null,
+    "stdout_stored_to": null,
     "stdout_storage_options": {
       "without_newline_characters": true
     },
@@ -25,13 +34,19 @@
       "exit_on_failure": true,
       "remedy_command_line": null
     },
+    "concurrency_group": null,
     "retry": 0
   },
   {
-    "command": "git",
+    "command": "rm",
     "arguments": [
-      "branch"
+      "-rf",
+      "test_dir"
     ],
+    "interpreter": null,
+    "environment_variables_override": null,
+    "working_directory": "../",
+    "stdout_stored_to": null,
     "stdout_storage_options": {
       "without_newline_characters": true
     },
@@ -39,14 +54,18 @@
       "exit_on_failure": true,
       "remedy_command_line": null
     },
+    "concurrency_group": null,
     "retry": 0
   },
   {
-    "command": "git",
+    "command": "echo",
     "arguments": [
-      "switch",
-      "<<branch_to_switch:on_program_execution>>"
+      "Directory has been deleted."
     ],
+    "interpreter": null,
+    "environment_variables_override": null,
+    "working_directory": null,
+    "stdout_stored_to": null,
     "stdout_storage_options": {
       "without_newline_characters": true
     },
@@ -54,6 +73,7 @@
       "exit_on_failure": true,
       "remedy_command_line": null
     },
+    "concurrency_group": null,
     "retry": 0
   }
 ]
