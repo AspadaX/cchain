@@ -84,8 +84,7 @@ cchain run ./cchain_git_commit.json # Using a pre-built workflow to commit chang
 cargo install cchain
 ```
 
-**Pre-built binaries** (coming soon!)  
-*[Subscribe for updates](https://github.com/yourrepo)*
+**Pre-built binaries** (coming soon! Star the repo for updates!)  
 
 ---
 
