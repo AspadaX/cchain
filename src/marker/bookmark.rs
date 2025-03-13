@@ -170,7 +170,6 @@ impl Bookmark {
         matched_chains
             .sort_by(|a, b| b.1.cmp(&a.1));
         
-        println!("{:?}", matched_chains);
         let mut results = Vec::new();
         for matched_chain in matched_chains {
             // Skip the chains if the score is zero
