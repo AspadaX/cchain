@@ -127,7 +127,7 @@ It is much welcomed to PR new chains to this repository!
   "environment_variables_override": {
     "APP_VERSION": "llm_generate('Generate a semantic version')"
   },
-  "stdout_stored_to": "BUILD_ID"  # Pass to next command!
+  "stdout_stored_to": "<<build_id>>"  # Pass to next command!
 }
 ```
 
