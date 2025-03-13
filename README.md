@@ -177,7 +177,7 @@ cchain new setup --prompt "Clone repo, install deps, start services"
 ```json
 {
   "command": "llm_generate('Fix this error', './failing_script.sh 2>&1')",
-  "stdout_stored_to": "FIX_SUGGESTION"
+  "stdout_stored_to": "<<fix_suggestion>>"
 }
 ```
 
