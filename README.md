@@ -105,6 +105,8 @@ cchain run ./cchain_deploy.json
 ```bash
 cchain add ./cchain_deploy.json  # Bookmark it as workflow #0
 cchain run 0  # Re-run anytime
+cchain run deploy # Or, use keyword to run it
+cchain run "deploy some other fancy stuff" # Or, use multiple keywords
 ```
 ### 4. Access Public Chains
 You may also want to share your chain, or find chains created by someone else. I hosted a GitHub repository for this purpose:
@@ -157,7 +159,7 @@ cchain new your_file_name
 
 ---
 
-## 🛠️ Use Cases
+## 🛠️ Use Cases (Just mocks, but feasible)
 
 ### CI/CD Made Simple
 ```json
