@@ -47,9 +47,9 @@ pub enum Commands {
 #[derive(Debug, Args)]
 #[command(group = clap::ArgGroup::new("sources").required(true).multiple(false))]
 pub struct RunArguments {
-    /// Index of the chain,
-    /// or a path to a chain,
-    /// or keywords of a chain
+    /// Index of the chain, or a path to a chain, or keyword(s) of a chain. 
+    /// Single keyword: `cchain run keyword1`.
+    /// Multiple keywords: `cchain run "keyword1 keyword2"`.
     #[arg(group = "sources")]
     pub chain: String,
 }
