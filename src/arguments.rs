@@ -48,7 +48,8 @@ pub enum Commands {
 #[command(group = clap::ArgGroup::new("sources").required(true).multiple(false))]
 pub struct RunArguments {
     /// Index of the chain,
-    /// or a path to a chain
+    /// or a path to a chain,
+    /// or keywords of a chain
     #[arg(group = "sources")]
     pub chain: String,
 }

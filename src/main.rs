@@ -5,8 +5,8 @@ use anyhow::{Error, Result};
 use cchain::arguments::*;
 use cchain::core::traits::Execution;
 use cchain::commons::naming::HumanReadable;
-use cchain::commons::utility::get_paths;
-use cchain::display_control::{display_form, display_message, Level};
+use cchain::commons::utility::{get_paths, input_message};
+use cchain::display_control::{display_form, display_message, display_tree_message, Level};
 use cchain::generations::create::ChainCreation;
 use cchain::marker::reference::ChainReference;
 use cchain::{core::chain::Chain, marker::bookmark::Bookmark};
@@ -31,19 +31,66 @@ fn main() -> Result<(), Error> {
                     }
                 }
                 Err(_) => {
-                    // Load and parse the configuration file
-                    let mut chain = Chain::from_file(&subcommand.chain)?;
-                    // Iterate over each configuration and execute the commands
-                    match chain.execute() {
-                        Ok(_) => return Ok(()),
-                        Err(_) => {
-                            chain.show_statistics();
-                            display_message(
-                                Level::Error,
-                                "Chain execution finished with error(s) ocurred",
-                            );
+                    let mut chain: Option<Chain> = None;
+                    // If the input is a path to a chain 
+                    let path = Path::new(&subcommand.chain);
+                    if path.exists() && path.is_file() {
+                        if let Some(extension) = path.extension() {
+                            if extension == "json" {
+                                if let Some(file_name) = path.file_name() {
+                                    if file_name.to_string_lossy().starts_with("cchain_") {
+                                        // Load and parse the configuration file
+                                        chain = Some(Chain::from_file(&subcommand.chain)?);
+                                    }
+                                }
+                            }
                         }
-                    };
+                    } else {
+                        // If the input is keywords
+                        let result = bookmark.get_chains_by_keywords(
+                            subcommand.chain
+                                .split_whitespace()
+                                .map(String::from)
+                                .collect::<Vec<String>>()
+                        );
+                        
+                        if let Some(chain_references) = result {
+                            // Throw an error if no chains are found
+                            if chain_references.len() == 0 {
+                                display_message(Level::Error, "No chains found");
+                                return Ok(());
+                            }
+                            
+                            // Run the chain if it is exactly one
+                            if chain_references.len() == 1 {
+                                chain = Some(Chain::from_file(&chain_references[0].get_chain_path_string())?);
+                            } else {
+                                // Provide selections if multiple chains are found
+                                display_message(Level::Logging, "Multiple chains found:");
+                                for (index, chain_reference) in chain_references.iter().enumerate() {
+                                    display_tree_message(1, &format!("{}: {}", index + 1, chain_reference.get_human_readable_name()));
+                                }
+                                let selection: usize = input_message("Please select a chain to execute:")?.trim().parse::<usize>()?;
+                                chain = Some(Chain::from_file(&chain_references[selection - 1].get_chain_path_string())?);
+                            }
+                        }
+                    }
+                    
+                    // Iterate over each configuration and execute the commands
+                    if let Some(mut chain) = chain {
+                        match chain.execute() {
+                            Ok(_) => return Ok(()),
+                            Err(_) => {
+                                chain.show_statistics();
+                                display_message(
+                                    Level::Error,
+                                    "Chain execution finished with error(s) occurred",
+                                );
+                            }
+                        };
+                    } else {
+                        display_message(Level::Error, "No chain to execute");
+                    }
                 }
             }
         },
