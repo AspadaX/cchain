@@ -135,10 +135,20 @@ It is much welcomed to PR new chains to this repository!
 
 ### Concurrent Tasks (Beta)
 ```json
-{
-  "command": "xh download http://example.com/large-asset.zip",
-  "concurrency_group": 1  # Download 3 files in parallel
-}
+[
+  {
+    "command": "xh download http://example.com/large-asset.zip",
+    "concurrency_group": 1
+  },
+  {
+    "command": "xh download http://example.com/large-asset.zip",
+    "concurrency_group": 1
+  },
+  {
+    "command": "xh download http://example.com/large-asset.zip",
+    "concurrency_group": 1
+  }
+]  # Download 3 files in parallel
 ```
 
 You may find examples in the `./examples` directory of this repo. Also, you may use the following command to generate a template chain file:
