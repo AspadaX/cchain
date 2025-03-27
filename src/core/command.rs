@@ -126,9 +126,25 @@ impl CommandLine {
         raw_variable_name: &str,
         value: String,
     ) -> Result<(), Error> {
+        // For `on_program_execution` variables, there might be subsequent variables that
+        // does not have the suffix, but are still expected to have values. 
+        // Hence, we should create two variable names to check if it is contained. 
+        let mut raw_variable_name_without_suffix: String = raw_variable_name.split(":").collect::<Vec<&str>>()[0].to_string();
+        raw_variable_name_without_suffix.push_str(">>");
+        
         for argument in &mut self.arguments {
-            if argument.contains(raw_variable_name) {
-                *argument = argument.replace(raw_variable_name, &value);
+            // If the new_argument is exactly the same as the argument, 
+            // it means that the replace has failed. 
+            // Then, we should use a modified string to replace the var. 
+            // And if that replacement still fails, it means they are not meant to be replaced
+            if argument.contains(&raw_variable_name) {
+                *argument = argument.replace(raw_variable_name, &value);    
+                continue;
+            }
+            
+            if argument.contains(&raw_variable_name_without_suffix) {
+                // Try replacing the var with a modified string
+                *argument = argument.replace(&raw_variable_name_without_suffix, &value);
             }
         }
 
