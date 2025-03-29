@@ -1,16 +1,13 @@
-use std::collections::HashSet;
 use std::fs::{canonicalize, DirEntry};
 use std::path::Path;
 use std::process::exit;
 
 use anyhow::{Error, Result};
 use cchain::arguments::*;
-use cchain::commons::packages::{AvailablePackages, Package};
 use cchain::core::traits::Execution;
 use cchain::commons::naming::HumanReadable;
 use cchain::commons::utility::{check_required_packages, get_paths, read_into_chain};
-use cchain::display_control::{display_form, display_message, display_tree_message, Level};
-use cchain::generations::create::ChainCreation;
+use cchain::{display_control::{display_form, display_message, Level}, generations::create::ChainCreation};
 use cchain::marker::reference::ChainReference;
 use cchain::{core::chain::Chain, marker::bookmark::Bookmark};
 use clap::{crate_version, Parser};
@@ -82,7 +79,7 @@ fn main() -> Result<(), Error> {
             }
 
             if path.is_dir() {
-                let fullpath = canonicalize(&path)?;
+                let fullpath: std::path::PathBuf = canonicalize(&path)?;
                 let filepaths: Vec<DirEntry> = get_paths(Path::new(&fullpath))?;
                 display_message(
                     Level::Logging,
