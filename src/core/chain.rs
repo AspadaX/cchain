@@ -6,7 +6,7 @@ use crate::{
     commons::{packages::{AvailablePackages, Package}, utility::input_message}, core::{
         program::Program,
         traits::{Execution, ExecutionType},
-    }, display_control::{display_message, display_tree_message, Level}, variable::{Variable, VariableGroupControl, VariableInitializationTime}
+    }, display_control::{display_message, display_tree_message, Level}, marker::reference::TrackPath, variable::{Variable, VariableGroupControl, VariableInitializationTime}
 };
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -304,10 +304,6 @@ impl Chain {
     pub fn get_failed_program_execution_number(&self) -> usize {
         self.failed_program_executions.get()
     }
-    
-    pub fn get_path(&self) -> &str {
-        &self.path
-    }
 }
 
 impl std::fmt::Display for Chain {
@@ -528,5 +524,11 @@ impl AvailablePackages for Chain {
         }
         
         Ok(required_packages)
+    }
+}
+
+impl TrackPath for Chain {
+    fn get_path(&self) -> &str {
+        &self.path
     }
 }
