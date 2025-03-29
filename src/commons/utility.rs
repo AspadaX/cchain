@@ -1,10 +1,12 @@
 use std::collections::HashSet;
 use std::fs::{canonicalize, DirEntry};
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anyhow::anyhow;
 use anyhow::{Error, Result};
+use git2::build::RepoBuilder;
+use git2::{FetchOptions, ProxyOptions, RemoteCallbacks, Repository};
 
 use crate::display_control::display_message;
 use crate::display_control::display_tree_message;
@@ -111,8 +113,40 @@ pub fn check_required_packages(chain: &Chain) -> Result<(), Error> {
     Ok(())
 }
 
+/// Handle the case in which the input string is a git repo.
+/// This returns a local path to the cloned git repo. 
+fn handle_remote_url(input_string: &str) -> Result<String, Error> {
+    let current_dir: PathBuf = std::env::current_dir()?
+        .canonicalize()?
+        .join(input_string.split("/").last().unwrap());
+    
+    let mut fetch_options = FetchOptions::new();
+    let mut proxy_options = ProxyOptions::new();
+    proxy_options.auto();
+    fetch_options.proxy_options(proxy_options);
+    
+    let repository = RepoBuilder::new()
+        .fetch_options(
+            fetch_options
+        )
+        .clone(input_string, &current_dir)?;
+    
+    return Ok(repository.workdir().unwrap().to_string_lossy().to_string());
+}
+
 pub fn handle_adding_bookmarks_logics(bookmark: &mut Bookmark, input_string: &str) -> Result<(), Error> {
-    let path = Path::new(input_string);
+    
+    let path: PathBuf = if input_string.contains("github") {
+        display_message(Level::Logging, "GitHub repository detected. Try adding bookmarks from there...");
+        let local_path = PathBuf::from(handle_remote_url(input_string)?);
+        display_message(Level::Logging, &format!("Repository cloned to: {}", local_path.display()));
+        
+        local_path
+    } else {
+        PathBuf::from(input_string)
+    };
+    
+    let path = path.as_path();
     
     if !path.exists() {
         return Err(anyhow!("Provided path does not exist! Operation aborted."));
