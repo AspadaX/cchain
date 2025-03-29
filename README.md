@@ -115,6 +115,12 @@ You may also want to share your chain, or find chains created by someone else. I
 git clone https://github.com/AspadaX/cchain-chains
 ```
 
+This respository can be directly addded to your local bookmark:
+
+```bash
+cchain add https://github.com/AspadaX/cchain-chains
+```
+
 It is much welcomed to PR new chains to this repository!
 
 ---

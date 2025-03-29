@@ -1,9 +1,9 @@
-use std::{cell::Cell, sync::{Arc, Mutex, MutexGuard}, thread};
+use std::{cell::Cell, collections::HashSet, sync::{Arc, Mutex, MutexGuard}, thread};
 
 use anyhow::{anyhow, Error, Result};
 
 use crate::{
-    commons::utility::input_message, core::{
+    commons::{packages::{AvailablePackages, Package}, utility::input_message}, core::{
         program::Program,
         traits::{Execution, ExecutionType},
     }, display_control::{display_message, display_tree_message, Level}, variable::{Variable, VariableGroupControl, VariableInitializationTime}
@@ -25,6 +25,7 @@ pub struct Chain {
     programs: Vec<Arc<Mutex<Program>>>,
     variables: Vec<Arc<Mutex<Variable>>>,
     failed_program_executions: Cell<usize>,
+    path: String,
 }
 
 impl Chain {
@@ -73,6 +74,7 @@ impl Chain {
             programs,
             variables,
             failed_program_executions: Cell::new(0),
+            path: path.to_string(),
         })
     }
 
@@ -302,6 +304,10 @@ impl Chain {
     pub fn get_failed_program_execution_number(&self) -> usize {
         self.failed_program_executions.get()
     }
+    
+    pub fn get_path(&self) -> &str {
+        &self.path
+    }
 }
 
 impl std::fmt::Display for Chain {
@@ -501,5 +507,26 @@ impl Execution<ChainExecutionResult> for Chain {
         }
 
         Ok(vec![ChainExecutionResult::new("Done".to_string())])
+    }
+}
+
+impl AvailablePackages for Chain {
+    fn get_required_packages(&self) -> Result<HashSet<Package>, Error> {
+        let mut required_packages: HashSet<Package> = HashSet::new();
+        for program in &self.programs {
+            let mut program = program.lock().unwrap();
+            
+            required_packages.insert(
+                Package::new(program.get_command_line().get_command().to_string())
+            );
+            
+            if let Some(remedy_command_line) = program.get_remedy_command_line() {
+                required_packages.insert(
+                    Package::new(remedy_command_line.get_command().to_string())
+                );
+            }
+        }
+        
+        Ok(required_packages)
     }
 }

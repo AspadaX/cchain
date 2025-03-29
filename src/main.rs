@@ -1,13 +1,10 @@
-use std::fs::{canonicalize, DirEntry};
-use std::path::Path;
+use std::process::exit;
 
 use anyhow::{Error, Result};
 use cchain::arguments::*;
 use cchain::core::traits::Execution;
 use cchain::commons::naming::HumanReadable;
-use cchain::commons::utility::{get_paths, input_message};
-use cchain::display_control::{display_form, display_message, display_tree_message, Level};
-use cchain::generations::create::ChainCreation;
+use cchain::{commons::utility::{check_required_packages, handle_adding_bookmarks_logics, read_into_chain}, display_control::{display_form, display_message, Level}, generations::create::ChainCreation};
 use cchain::marker::reference::ChainReference;
 use cchain::{core::chain::Chain, marker::bookmark::Bookmark};
 use clap::{crate_version, Parser};
@@ -23,150 +20,58 @@ fn main() -> Result<(), Error> {
         Commands::Run(subcommand) => {
             // If the input is parsable into an usize, it will use it as an
             // index to the bookmark. Otherwise, it will use it as a path
-            match subcommand.chain.parse::<usize>() {
+            let mut chain: Chain = match subcommand.chain.parse::<usize>() {
                 Ok(index) => {
                     if let Some(chain_reference) = bookmark.get_chain_reference_by_index(index) {
-                        let mut chain = Chain::from_file(&chain_reference.get_chain_path_string())?;
-                        chain.execute()?;
+                        Chain::from_file(&chain_reference.get_chain_path_string())?
+                    } else {
+                        display_message(
+                            Level::Error, 
+                            &format!("Cannot get the chain with the specified index: {}", index)
+                        );
+                        exit(1);
                     }
                 }
                 Err(_) => {
-                    let mut chain: Option<Chain> = None;
                     // If the input is a path to a chain 
-                    let path = Path::new(&subcommand.chain);
-                    if path.exists() && path.is_file() {
-                        if let Some(extension) = path.extension() {
-                            if extension == "json" {
-                                if let Some(file_name) = path.file_name() {
-                                    if file_name.to_string_lossy().starts_with("cchain_") {
-                                        // Load and parse the configuration file
-                                        chain = Some(Chain::from_file(&subcommand.chain)?);
-                                    }
-                                }
-                            }
+                    match read_into_chain(&subcommand.chain, &bookmark) {
+                        Ok(chain) => chain,
+                        Err(error) => {
+                            display_message(Level::Error, &error.to_string());
+                            exit(1);
                         }
-                    } else {
-                        // If the input is keywords
-                        let result = bookmark.get_chains_by_keywords(
-                            subcommand.chain
-                                .split_whitespace()
-                                .map(String::from)
-                                .collect::<Vec<String>>()
-                        );
-                        
-                        if let Some(chain_references) = result {
-                            // Throw an error if no chains are found
-                            if chain_references.len() == 0 {
-                                display_message(Level::Error, "No chains found");
-                                return Ok(());
-                            }
-                            
-                            // Run the chain if it is exactly one
-                            if chain_references.len() == 1 {
-                                chain = Some(Chain::from_file(&chain_references[0].get_chain_path_string())?);
-                            } else {
-                                // Provide selections if multiple chains are found
-                                display_message(Level::Logging, "Multiple chains found:");
-                                for (index, chain_reference) in chain_references.iter().enumerate() {
-                                    display_tree_message(1, &format!("{}: {}", index + 1, chain_reference.get_human_readable_name()));
-                                }
-                                let selection: usize = input_message("Please select a chain to execute:")?.trim().parse::<usize>()?;
-                                chain = Some(Chain::from_file(&chain_references[selection - 1].get_chain_path_string())?);
-                            }
-                        }
-                    }
-                    
-                    // Iterate over each configuration and execute the commands
-                    if let Some(mut chain) = chain {
-                        match chain.execute() {
-                            Ok(_) => return Ok(()),
-                            Err(_) => {
-                                chain.show_statistics();
-                                display_message(
-                                    Level::Error,
-                                    "Chain execution finished with error(s) occurred",
-                                );
-                            }
-                        };
-                    } else {
-                        display_message(Level::Error, "No chain to execute");
                     }
                 }
-            }
+            };
+            
+            // Check the required packages
+            match check_required_packages(&chain) {
+                Ok(_) => (),
+                Err(error) => {
+                    display_message(Level::Error, &error.to_string());
+                    exit(1);
+                }
+            };
+            
+            // Iterate over each configuration and execute the commands
+            match chain.execute() {
+                Ok(_) => return Ok(()),
+                Err(_) => {
+                    chain.show_statistics();
+                    display_message(
+                        Level::Error,
+                        "Chain execution finished with error(s) occurred",
+                    );
+                }
+            };
         },
         Commands::Add(subcommand) => {
-            let path = Path::new(&subcommand.path);
-
-            if !path.exists() {
-                display_message(
-                    Level::Error,
-                    &format!("Provided path does not exist! Operation aborted."),
-                );
-            }
-
-            if path.is_dir() {
-                let fullpath = canonicalize(&path)?;
-                let filepaths: Vec<DirEntry> = get_paths(Path::new(&fullpath))?;
-                display_message(
-                    Level::Logging,
-                    &format!("Registering {} chains to the bookmark", filepaths.len()),
-                );
-                for filepath in filepaths {
-                    match bookmark.add_chain_reference(
-                        filepath
-                            .path()
-                            .canonicalize()
-                            .unwrap()
-                            .to_string_lossy()
-                            .to_string(),
-                    ) {
-                        Ok(_) => {
-                            display_message(
-                                Level::Logging,
-                                &format!(
-                                    "{} is registered successfully.",
-                                    filepath.path().canonicalize().unwrap().to_str().unwrap()
-                                ),
-                            );
-                            continue;
-                        }
-                        Err(error) => {
-                            display_message(
-                                Level::Warn,
-                                &format!("{}, skipped bookmarking.", error.to_string()),
-                            );
-                            continue;
-                        }
-                    };
+            match handle_adding_bookmarks_logics(&mut bookmark, &subcommand.path) {
+                Ok(_) => (),
+                Err(error) => {
+                    display_message(Level::Error, &error.to_string());
+                    exit(1);
                 }
-            }
-
-            if path.is_file() {
-                display_message(Level::Logging, "Registering a chain to the bookmark");
-
-                let filepath: &Path = Path::new(&path);
-
-                match bookmark.add_chain_reference(
-                    filepath
-                        .canonicalize()
-                        .unwrap()
-                        .to_string_lossy()
-                        .to_string(),
-                ) {
-                    Ok(_) => display_message(
-                        Level::Logging,
-                        &format!(
-                            "{} is registered successfully.",
-                            filepath.canonicalize().unwrap().to_str().unwrap()
-                        ),
-                    ),
-                    Err(error) => {
-                        display_message(
-                            Level::Warn,
-                            &format!("{}, skipped bookmarking.", error.to_string()),
-                        );
-                    }
-                };
             }
 
             display_message(Level::Logging, "Bookmark registration is done.");
