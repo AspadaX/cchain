@@ -1,11 +1,14 @@
+use std::collections::HashSet;
 use std::fs::{canonicalize, DirEntry};
 use std::path::Path;
+use std::process::exit;
 
 use anyhow::{Error, Result};
 use cchain::arguments::*;
+use cchain::commons::packages::{AvailablePackages, Package};
 use cchain::core::traits::Execution;
 use cchain::commons::naming::HumanReadable;
-use cchain::commons::utility::{get_paths, input_message};
+use cchain::commons::utility::{check_required_packages, get_paths, read_into_chain};
 use cchain::display_control::{display_form, display_message, display_tree_message, Level};
 use cchain::generations::create::ChainCreation;
 use cchain::marker::reference::ChainReference;
@@ -23,76 +26,50 @@ fn main() -> Result<(), Error> {
         Commands::Run(subcommand) => {
             // If the input is parsable into an usize, it will use it as an
             // index to the bookmark. Otherwise, it will use it as a path
-            match subcommand.chain.parse::<usize>() {
+            let mut chain: Chain = match subcommand.chain.parse::<usize>() {
                 Ok(index) => {
                     if let Some(chain_reference) = bookmark.get_chain_reference_by_index(index) {
-                        let mut chain = Chain::from_file(&chain_reference.get_chain_path_string())?;
-                        chain.execute()?;
+                        Chain::from_file(&chain_reference.get_chain_path_string())?
+                    } else {
+                        display_message(
+                            Level::Error, 
+                            &format!("Cannot get the chain with the specified index: {}", index)
+                        );
+                        exit(1);
                     }
                 }
                 Err(_) => {
-                    let mut chain: Option<Chain> = None;
                     // If the input is a path to a chain 
-                    let path = Path::new(&subcommand.chain);
-                    if path.exists() && path.is_file() {
-                        if let Some(extension) = path.extension() {
-                            if extension == "json" {
-                                if let Some(file_name) = path.file_name() {
-                                    if file_name.to_string_lossy().starts_with("cchain_") {
-                                        // Load and parse the configuration file
-                                        chain = Some(Chain::from_file(&subcommand.chain)?);
-                                    }
-                                }
-                            }
+                    match read_into_chain(&subcommand.chain, &bookmark) {
+                        Ok(chain) => chain,
+                        Err(error) => {
+                            display_message(Level::Error, &error.to_string());
+                            exit(1);
                         }
-                    } else {
-                        // If the input is keywords
-                        let result = bookmark.get_chains_by_keywords(
-                            subcommand.chain
-                                .split_whitespace()
-                                .map(String::from)
-                                .collect::<Vec<String>>()
-                        );
-                        
-                        if let Some(chain_references) = result {
-                            // Throw an error if no chains are found
-                            if chain_references.len() == 0 {
-                                display_message(Level::Error, "No chains found");
-                                return Ok(());
-                            }
-                            
-                            // Run the chain if it is exactly one
-                            if chain_references.len() == 1 {
-                                chain = Some(Chain::from_file(&chain_references[0].get_chain_path_string())?);
-                            } else {
-                                // Provide selections if multiple chains are found
-                                display_message(Level::Logging, "Multiple chains found:");
-                                for (index, chain_reference) in chain_references.iter().enumerate() {
-                                    display_tree_message(1, &format!("{}: {}", index + 1, chain_reference.get_human_readable_name()));
-                                }
-                                let selection: usize = input_message("Please select a chain to execute:")?.trim().parse::<usize>()?;
-                                chain = Some(Chain::from_file(&chain_references[selection - 1].get_chain_path_string())?);
-                            }
-                        }
-                    }
-                    
-                    // Iterate over each configuration and execute the commands
-                    if let Some(mut chain) = chain {
-                        match chain.execute() {
-                            Ok(_) => return Ok(()),
-                            Err(_) => {
-                                chain.show_statistics();
-                                display_message(
-                                    Level::Error,
-                                    "Chain execution finished with error(s) occurred",
-                                );
-                            }
-                        };
-                    } else {
-                        display_message(Level::Error, "No chain to execute");
                     }
                 }
-            }
+            };
+            
+            // Check the required packages
+            match check_required_packages(&chain) {
+                Ok(_) => (),
+                Err(error) => {
+                    display_message(Level::Error, &error.to_string());
+                    exit(1);
+                }
+            };
+            
+            // Iterate over each configuration and execute the commands
+            match chain.execute() {
+                Ok(_) => return Ok(()),
+                Err(_) => {
+                    chain.show_statistics();
+                    display_message(
+                        Level::Error,
+                        "Chain execution finished with error(s) occurred",
+                    );
+                }
+            };
         },
         Commands::Add(subcommand) => {
             let path = Path::new(&subcommand.path);

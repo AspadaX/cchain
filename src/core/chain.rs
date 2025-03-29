@@ -1,9 +1,9 @@
-use std::{cell::Cell, sync::{Arc, Mutex, MutexGuard}, thread};
+use std::{cell::Cell, collections::HashSet, sync::{Arc, Mutex, MutexGuard}, thread};
 
 use anyhow::{anyhow, Error, Result};
 
 use crate::{
-    commons::utility::input_message, core::{
+    commons::{packages::{AvailablePackages, Package}, utility::input_message}, core::{
         program::Program,
         traits::{Execution, ExecutionType},
     }, display_control::{display_message, display_tree_message, Level}, variable::{Variable, VariableGroupControl, VariableInitializationTime}
@@ -501,5 +501,26 @@ impl Execution<ChainExecutionResult> for Chain {
         }
 
         Ok(vec![ChainExecutionResult::new("Done".to_string())])
+    }
+}
+
+impl AvailablePackages for Chain {
+    fn get_required_packages(&self) -> Result<HashSet<Package>, Error> {
+        let mut required_packages: HashSet<Package> = HashSet::new();
+        for program in &self.programs {
+            let mut program = program.lock().unwrap();
+            
+            required_packages.insert(
+                Package::new(program.get_command_line().get_command().to_string())
+            );
+            
+            if let Some(remedy_command_line) = program.get_remedy_command_line() {
+                required_packages.insert(
+                    Package::new(remedy_command_line.to_string())
+                );
+            }
+        }
+        
+        Ok(required_packages)
     }
 }
