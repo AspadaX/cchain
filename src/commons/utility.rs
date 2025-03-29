@@ -1,5 +1,5 @@
 use std::collections::HashSet;
-use std::fs::DirEntry;
+use std::fs::{canonicalize, DirEntry};
 use std::io::Write;
 use std::path::Path;
 
@@ -97,8 +97,9 @@ pub fn check_required_packages(chain: &Chain) -> Result<(), Error> {
     
     if !required_packages.is_empty() {
         let mut error_message: String = format!(
-            "{} required packages are missing. Please install the following packages:", 
-            required_packages.len()
+            "{} required packages are missing when checking {}. Please install the following packages:", 
+            required_packages.len(),
+            chain.get_path()
         );
         for package in required_packages {
             error_message.push_str(&format!("\n     - {}", package.access_package_name()));
@@ -108,4 +109,84 @@ pub fn check_required_packages(chain: &Chain) -> Result<(), Error> {
     }
     
     Ok(())
+}
+
+pub fn handle_adding_bookmarks_logics(bookmark: &mut Bookmark, input_string: &str) -> Result<(), Error> {
+    let path = Path::new(input_string);
+    
+    if !path.exists() {
+        return Err(anyhow!("Provided path does not exist! Operation aborted."));
+    }
+
+    if path.is_dir() {
+        let fullpath: std::path::PathBuf = canonicalize(&path)?;
+        let filepaths: Vec<DirEntry> = get_paths(Path::new(&fullpath))?;
+        display_message(
+            Level::Logging,
+            &format!("Registering {} chains to the bookmark", filepaths.len()),
+        );
+        for filepath in filepaths {
+            // Acquire the canonical path of the file
+            let path_string: String =filepath
+                .path()
+                .canonicalize()
+                .unwrap()
+                .to_string_lossy()
+                .to_string();
+            
+            // Check if the file is a valid chain file
+            check_required_packages(&Chain::from_file(&path_string)?)?;
+            
+            match bookmark.add_chain_reference(
+                path_string
+            ) {
+                Ok(_) => {
+                    display_message(
+                        Level::Logging,
+                        &format!(
+                            "{} is registered successfully.",
+                            filepath.path().canonicalize().unwrap().to_str().unwrap()
+                        ),
+                    );
+                    continue;
+                }
+                Err(error) => {
+                    display_message(
+                        Level::Warn,
+                        &format!("{}, skipped bookmarking.", error.to_string()),
+                    );
+                    continue;
+                }
+            };
+        }
+    }
+
+    if path.is_file() {
+        display_message(Level::Logging, "Registering a chain to the bookmark");
+
+        let filepath: &Path = Path::new(&path);
+        let path_string: String = filepath
+            .canonicalize()
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
+        
+        // Check if the file is a valid chain file
+        check_required_packages(&Chain::from_file(&path_string)?)?;
+
+        match bookmark.add_chain_reference(path_string) {
+            Ok(_) => display_message(
+                Level::Logging,
+                &format!(
+                    "{} is registered successfully.",
+                    filepath.canonicalize().unwrap().to_str().unwrap()
+                ),
+            ),
+            Err(error) => {
+                return Err(anyhow!(format!("{}, skipped bookmarking.", error.to_string())));
+            }
+        };
+    }
+    
+    Err(anyhow!("The specified path is not valid. Please check."))
 }

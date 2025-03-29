@@ -25,6 +25,7 @@ pub struct Chain {
     programs: Vec<Arc<Mutex<Program>>>,
     variables: Vec<Arc<Mutex<Variable>>>,
     failed_program_executions: Cell<usize>,
+    path: String,
 }
 
 impl Chain {
@@ -73,6 +74,7 @@ impl Chain {
             programs,
             variables,
             failed_program_executions: Cell::new(0),
+            path: path.to_string(),
         })
     }
 
@@ -302,6 +304,10 @@ impl Chain {
     pub fn get_failed_program_execution_number(&self) -> usize {
         self.failed_program_executions.get()
     }
+    
+    pub fn get_path(&self) -> &str {
+        &self.path
+    }
 }
 
 impl std::fmt::Display for Chain {
@@ -516,7 +522,7 @@ impl AvailablePackages for Chain {
             
             if let Some(remedy_command_line) = program.get_remedy_command_line() {
                 required_packages.insert(
-                    Package::new(remedy_command_line.to_string())
+                    Package::new(remedy_command_line.get_command().to_string())
                 );
             }
         }

@@ -1,13 +1,10 @@
-use std::fs::{canonicalize, DirEntry};
-use std::path::Path;
 use std::process::exit;
 
 use anyhow::{Error, Result};
 use cchain::arguments::*;
 use cchain::core::traits::Execution;
 use cchain::commons::naming::HumanReadable;
-use cchain::commons::utility::{check_required_packages, get_paths, read_into_chain};
-use cchain::{display_control::{display_form, display_message, Level}, generations::create::ChainCreation};
+use cchain::{commons::utility::{check_required_packages, handle_adding_bookmarks_logics, read_into_chain}, display_control::{display_form, display_message, Level}, generations::create::ChainCreation};
 use cchain::marker::reference::ChainReference;
 use cchain::{core::chain::Chain, marker::bookmark::Bookmark};
 use clap::{crate_version, Parser};
@@ -69,78 +66,12 @@ fn main() -> Result<(), Error> {
             };
         },
         Commands::Add(subcommand) => {
-            let path = Path::new(&subcommand.path);
-
-            if !path.exists() {
-                display_message(
-                    Level::Error,
-                    &format!("Provided path does not exist! Operation aborted."),
-                );
-            }
-
-            if path.is_dir() {
-                let fullpath: std::path::PathBuf = canonicalize(&path)?;
-                let filepaths: Vec<DirEntry> = get_paths(Path::new(&fullpath))?;
-                display_message(
-                    Level::Logging,
-                    &format!("Registering {} chains to the bookmark", filepaths.len()),
-                );
-                for filepath in filepaths {
-                    match bookmark.add_chain_reference(
-                        filepath
-                            .path()
-                            .canonicalize()
-                            .unwrap()
-                            .to_string_lossy()
-                            .to_string(),
-                    ) {
-                        Ok(_) => {
-                            display_message(
-                                Level::Logging,
-                                &format!(
-                                    "{} is registered successfully.",
-                                    filepath.path().canonicalize().unwrap().to_str().unwrap()
-                                ),
-                            );
-                            continue;
-                        }
-                        Err(error) => {
-                            display_message(
-                                Level::Warn,
-                                &format!("{}, skipped bookmarking.", error.to_string()),
-                            );
-                            continue;
-                        }
-                    };
+            match handle_adding_bookmarks_logics(&mut bookmark, &subcommand.path) {
+                Ok(_) => (),
+                Err(error) => {
+                    display_message(Level::Error, &error.to_string());
+                    exit(1);
                 }
-            }
-
-            if path.is_file() {
-                display_message(Level::Logging, "Registering a chain to the bookmark");
-
-                let filepath: &Path = Path::new(&path);
-
-                match bookmark.add_chain_reference(
-                    filepath
-                        .canonicalize()
-                        .unwrap()
-                        .to_string_lossy()
-                        .to_string(),
-                ) {
-                    Ok(_) => display_message(
-                        Level::Logging,
-                        &format!(
-                            "{} is registered successfully.",
-                            filepath.canonicalize().unwrap().to_str().unwrap()
-                        ),
-                    ),
-                    Err(error) => {
-                        display_message(
-                            Level::Warn,
-                            &format!("{}, skipped bookmarking.", error.to_string()),
-                        );
-                    }
-                };
             }
 
             display_message(Level::Logging, "Bookmark registration is done.");
