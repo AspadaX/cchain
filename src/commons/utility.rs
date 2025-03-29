@@ -6,14 +6,16 @@ use std::path::{Path, PathBuf};
 use anyhow::anyhow;
 use anyhow::{Error, Result};
 use git2::build::RepoBuilder;
-use git2::{FetchOptions, ProxyOptions, RemoteCallbacks, Repository};
+use git2::{FetchOptions, ProxyOptions};
 
 use crate::display_control::display_message;
 use crate::display_control::display_tree_message;
 use crate::display_control::Level;
 use crate::core::chain::Chain;
 use crate::marker::bookmark::Bookmark;
+use crate::marker::reference::TrackPath;
 
+use super::errors::PackageError;
 use super::naming::HumanReadable;
 use super::packages::{AvailablePackages, Package};
 
@@ -94,20 +96,17 @@ pub fn read_into_chain(input_string: &str, bookmark: &Bookmark) -> Result<Chain,
     Err(anyhow!("No chains found"))
 }
 
-pub fn check_required_packages(chain: &Chain) -> Result<(), Error> {
+pub fn check_required_packages(chain: &(impl AvailablePackages + TrackPath)) -> Result<(), Error> {
     let required_packages: HashSet<Package> = chain.get_missing_packages()?;
     
     if !required_packages.is_empty() {
-        let mut error_message: String = format!(
-            "{} required packages are missing when checking {}. Please install the following packages:", 
-            required_packages.len(),
-            chain.get_path()
-        );
-        for package in required_packages {
-            error_message.push_str(&format!("\n     - {}", package.access_package_name()));
-        }
-        
-        return Err(anyhow!(error_message));
+        return Err(PackageError::MissingPackages {
+            number_missed_packages: required_packages.len(),
+            missed_packages: required_packages.into_iter()
+                .map(|p| format!("\n    - {}", p.access_package_name()))
+                .collect(),
+            chain_name: chain.get_path().to_string()
+        }.into());
     }
     
     Ok(())
@@ -168,9 +167,6 @@ pub fn handle_adding_bookmarks_logics(bookmark: &mut Bookmark, input_string: &st
                 .to_string_lossy()
                 .to_string();
             
-            // Check if the file is a valid chain file
-            check_required_packages(&Chain::from_file(&path_string)?)?;
-            
             match bookmark.add_chain_reference(
                 path_string
             ) {
@@ -185,14 +181,32 @@ pub fn handle_adding_bookmarks_logics(bookmark: &mut Bookmark, input_string: &st
                     continue;
                 }
                 Err(error) => {
-                    display_message(
-                        Level::Warn,
-                        &format!("{}, skipped bookmarking.", error.to_string()),
-                    );
+                    match error.downcast_ref::<PackageError>() {
+                        Some(
+                            PackageError::MissingPackages { 
+                                number_missed_packages: _, 
+                                missed_packages: _, 
+                                chain_name: _ 
+                            }
+                        ) => {
+                            display_message(
+                                Level::Warn,
+                                &error.to_string()
+                            );
+                        }
+                        _ => {
+                            display_message(
+                                Level::Warn,
+                                &format!("{}, skipped bookmarking.", error.to_string()),
+                            );
+                        }
+                    }
                     continue;
                 }
             };
         }
+        
+        return Ok(());
     }
 
     if path.is_file() {
@@ -205,9 +219,6 @@ pub fn handle_adding_bookmarks_logics(bookmark: &mut Bookmark, input_string: &st
             .to_string_lossy()
             .to_string();
         
-        // Check if the file is a valid chain file
-        check_required_packages(&Chain::from_file(&path_string)?)?;
-
         match bookmark.add_chain_reference(path_string) {
             Ok(_) => display_message(
                 Level::Logging,
@@ -217,9 +228,30 @@ pub fn handle_adding_bookmarks_logics(bookmark: &mut Bookmark, input_string: &st
                 ),
             ),
             Err(error) => {
-                return Err(anyhow!(format!("{}, skipped bookmarking.", error.to_string())));
+                match error.downcast_ref::<PackageError>() {
+                    Some(
+                        PackageError::MissingPackages { 
+                            number_missed_packages: _, 
+                            missed_packages: _, 
+                            chain_name: _ 
+                        }
+                    ) => {
+                        display_message(
+                            Level::Warn,
+                            &error.to_string()
+                        );
+                    }
+                    _ => {
+                        display_message(
+                            Level::Warn,
+                            &format!("{}, skipped bookmarking.", error.to_string()),
+                        );
+                    }
+                }
             }
         };
+        
+        return Ok(());
     }
     
     Err(anyhow!("The specified path is not valid. Please check."))

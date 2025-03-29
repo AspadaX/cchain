@@ -4,7 +4,7 @@ use anyhow::{anyhow, Error, Result};
 use dirs;
 use serde::{Deserialize, Serialize};
 
-use crate::commons::naming::HumanReadable;
+use crate::{commons::{naming::HumanReadable, utility::check_required_packages}, core::chain::Chain};
 
 use super::reference::ChainReference;
 
@@ -56,6 +56,9 @@ impl Bookmark {
     }
 
     pub fn add_chain_reference(&mut self, configuration_path: String) -> Result<(), Error> {
+        // Check if the file is a valid chain file
+        check_required_packages(&Chain::from_file(&configuration_path)?)?;
+        
         let chain_reference = ChainReference::from_str(&configuration_path)?;
         if self.chain_references.contains(&chain_reference) {
             return Err(anyhow::anyhow!(

@@ -1,9 +1,14 @@
-use std::{path::Path, str::FromStr};
+use std::{collections::HashSet, path::Path, str::FromStr};
 
-use anyhow::{anyhow, Error};
+use anyhow::{anyhow, Error, Result};
 use serde::{Deserialize, Serialize};
 
-use crate::commons::naming::HumanReadable;
+use crate::{commons::{naming::HumanReadable, packages::{AvailablePackages, Package}}, core::chain::Chain};
+
+/// Provide methods to track the path of a data structure
+pub trait TrackPath {
+    fn get_path(&self) -> &str;
+}
 
 /// `Bookmark` is a collection of references to the chains
 /// `ChainRefenence` is a reference to a chain
@@ -75,5 +80,18 @@ impl HumanReadable for ChainReference {
             .to_string()
             .trim_end_matches(".json")
             .to_string()
+    }
+}
+
+impl AvailablePackages for ChainReference {
+    fn get_required_packages(&self) -> Result<HashSet<Package>, Error> {
+        let chain = Chain::from_file(&self.chain_path)?;
+        chain.get_missing_packages()
+    }
+}
+
+impl TrackPath for ChainReference {
+    fn get_path(&self) -> &str {
+        &self.chain_path
     }
 }
