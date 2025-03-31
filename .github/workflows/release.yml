@@ -125,7 +125,7 @@ jobs:
           toolchain: ${{ matrix.toolchain }}
           args:
             # "--locked --release --features ${{ steps.set-features-flag-value.outputs.features }}"
-            "--locked"
+            "--release"
           strip: true
       - name: Run tests
         uses: houseabsolute/actions-rust-cross@v1
@@ -135,7 +135,7 @@ jobs:
           toolchain: ${{ matrix.toolchain }}
           args:
             # "--locked --release  --features ${{ steps.set-features-flag-value.outputs.features }}"
-            "--locked"
+            "--release"
         if: ${{ !matrix.platform.skip-tests }}
       - name: Publish artifacts and release
         uses: houseabsolute/actions-rust-release@v0
