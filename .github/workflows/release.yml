@@ -103,7 +103,7 @@ jobs:
               bin: cchain
             toolchain: nightly
     steps:
-      # - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
       # - name: Set "--features" flag value
       #   id: set-features-flag-value
       #   shell: bash
