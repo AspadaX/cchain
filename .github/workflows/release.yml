@@ -162,7 +162,7 @@ jobs:
         run: |
           apk update
           # file is used in an integration test
-          apk add file musl-dev zstd-dev perl
+          apk add file musl-dev zstd-dev perl make openssl-dev
       - name: Run tests
         shell: sh
         # run: cargo test --locked
