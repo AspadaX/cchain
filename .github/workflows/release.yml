@@ -52,4 +52,3 @@ jobs:
           MINIFY: true
           TOOLCHAIN_VERSION: stable
           STATIC_LINKING: true
-          EXTRA_COMMAND_FLAGS: "--features=static"
