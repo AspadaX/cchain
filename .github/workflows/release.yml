@@ -39,16 +39,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # General environment variables
           RUSTFLAGS: '-C target-feature=+crt-static'  # Force static linking where possible
-          # OpenSSL configuration
-          OPENSSL_NO_VENDOR: 0  # Force vendored OpenSSL
-          OPENSSL_STATIC: 1     # Force static linking
-          # Linux-specific
-          PKG_CONFIG_ALL_STATIC: 1
-          # macOS-specific
-          OSXCROSS_NO_INCLUDE_PATH_WARNINGS: 1
         with:
           RUSTTARGET: ${{ matrix.target }}
           ARCHIVE_TYPES: ${{ matrix.archive }}
           MINIFY: true
           TOOLCHAIN_VERSION: stable
-          STATIC_LINKING: true
+          STATIC_LINKING: false
