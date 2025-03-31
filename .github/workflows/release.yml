@@ -165,4 +165,5 @@ jobs:
           apk add file musl-dev zstd-dev
       - name: Run tests
         shell: sh
-        run: cargo test --locked
+        # run: cargo test --locked
+        run: cargo test
