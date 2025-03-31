@@ -27,7 +27,7 @@ which = "7.0.2"
 openssl-sys = { version = "0.9", features = ["vendored"] }  # Force vendored OpenSSL
 libz-sys = { version = "1.1", features = ["static"] }  # Static zlib
 
-[target.'cfg(unix)'.dependencies]
+[target.'cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))'.dependencies]
 openssl-sys = { version = "0.9", features = ["vendored"] }
 
 [dev-dependencies]

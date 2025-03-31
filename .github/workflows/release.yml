@@ -20,6 +20,19 @@ jobs:
             archive: zip
     steps:
       - uses: actions/checkout@master
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          # Essential build tools for all targets
+          sudo apt-get install -y \
+            perl \
+            pkg-config \
+            libssl-dev \
+            nasm \
+            make \
+            automake \
+            libtool \
+            ${{ matrix.deps }}
       - name: Compile and release
         uses: rust-build/rust-build.action@v1.4.5
         env:
@@ -38,3 +51,5 @@ jobs:
           ARCHIVE_TYPES: ${{ matrix.archive }}
           MINIFY: true
           TOOLCHAIN_VERSION: stable
+          STATIC_LINKING: true
+          EXTRA_COMMAND_FLAGS: "--features=static"
