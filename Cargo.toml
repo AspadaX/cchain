@@ -14,7 +14,7 @@ async-openai = "0.27.2"
 clap = { version = "4.5.27", features = ["cargo", "derive", "string"] }
 console = "0.15.10"
 dirs = "6.0.0"
-git2 = "0.20.1"
+git2 = { version = "0.20.1", default-features = false, features = ["https", "ssh", "vendored-openssl"] }
 prettytable-rs = "0.10.0"
 regex = "1.11.1"
 serde = { version = "1.0.217", features = ["derive"] }
@@ -22,6 +22,13 @@ serde_json = "1.0.138"
 thiserror = "2.0.12"
 tokio = { version = "1.43.0", features = ["rt-multi-thread", "process"] }
 which = "7.0.2"
+
+# Add these to ensure proper vendoring:
+openssl-sys = { version = "0.9", features = ["vendored"] }  # Force vendored OpenSSL
+libz-sys = { version = "1.1", features = ["static"] }  # Static zlib
+
+[target.'cfg(unix)'.dependencies]
+openssl-sys = { version = "0.9", features = ["vendored"] }
 
 [dev-dependencies]
 tempfile = "3.17.1"
