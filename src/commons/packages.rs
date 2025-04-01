@@ -142,7 +142,7 @@ pub trait AvailablePackages {
         
         Ok(
             required_packages.into_iter()
-                .filter(|pkg| !available_packages.contains(pkg))
+                .filter(|pkg| !available_packages.contains(pkg) && !PathBuf::from(pkg.access_package_name()).exists())
                 .collect()
         )
     }
