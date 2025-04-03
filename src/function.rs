@@ -16,7 +16,7 @@ impl FromStr for Function {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let re = regex::Regex::new(r"(\w+)\s*$\s*'((?:[^']|\\')*)'\s*,\s*'((?:[^']|\\')*)'\s*$")?;
+        let re = regex::Regex::new(r"(\w+)\s*\(\s*'(.*)'\s*,\s*'(.*)'\s*\)")?;
 
         if let Some(caps) = re.captures(s) {
             let func_name: String = caps
