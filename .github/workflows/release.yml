@@ -1,11 +1,9 @@
 name: Tests and release
-on: 
+on:
   push:
-    branches:
-      - main
-  merge:
-    branches:
-      - main
+    branches: [main]
+  pull_request:
+    branches: [main]
 env:
   CRATE_NAME: cchain
   GITHUB_TOKEN: ${{ github.token }}
