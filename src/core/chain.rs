@@ -376,7 +376,13 @@ impl Execution<ChainExecutionResult> for Chain {
                 // Get a mutable reference to the current program.
                 let program = &mut self.programs[i].lock().unwrap();
                 // Process any functions provided as arguments for the program.
-                program.execute_argument_functions()?;
+                match program.execute_argument_functions() {
+                    Ok(_) => {},
+                    Err(error) => match self.handle_program_execution_failures(program, &error.to_string()) {
+                        Ok(_) => {},
+                        Err(error) => return Err(error)
+                    }
+                }
             }
 
             // Get the number of programs that are currently added to the 

@@ -228,7 +228,7 @@ impl Execution<ProgramExecutionResult> for Program {
                     }
                     // Increase attempt counter.
                     attempts += 1;
-                    let warn_msg = format!(
+                    let warn_msg: String = format!(
                         "Retrying {}: {}, attempt: {}",
                         self.get_execution_type(),
                         &self,
