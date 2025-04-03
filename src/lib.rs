@@ -1,8 +1,9 @@
-pub mod arguments;
-pub mod commons;
-pub mod display_control;
-pub mod function;
-pub mod marker;
 pub mod variable;
+pub mod function;
 pub mod core;
-pub mod generations;
+pub mod display_control;
+pub mod commons;
+
+mod arguments;
+mod marker;
+mod generations;

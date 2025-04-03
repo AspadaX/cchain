@@ -1,10 +1,12 @@
 use std::{process::Command, str::FromStr};
 
+use anyhow::anyhow;
 use console::Term;
 use regex;
 
 use crate::{commons::utility::input_message, display_control::{display_command_line, display_message, Level}, generations::llm::LLM};
 
+#[derive(Debug, Clone)]
 pub struct Function {
     name: String,
     parameters: Vec<String>,
@@ -119,7 +121,7 @@ impl Function {
                     continue;
                 }
                 "abort" => {
-                    anyhow::bail!("Execution aborted by the user");
+                    return Err(anyhow!("Execution aborted by the user"));
                 }
                 _ => {
                     display_message(

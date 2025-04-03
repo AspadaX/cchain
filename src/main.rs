@@ -1,12 +1,21 @@
+mod arguments;
+mod commons;
+mod display_control;
+mod function;
+mod marker;
+mod variable;
+mod core;
+mod generations;
+
 use std::process::exit;
 
 use anyhow::{Error, Result};
-use cchain::arguments::*;
-use cchain::core::traits::Execution;
-use cchain::commons::naming::HumanReadable;
-use cchain::{commons::utility::{check_required_packages, handle_adding_bookmarks_logics, read_into_chain}, display_control::{display_form, display_message, Level}, generations::create::ChainCreation};
-use cchain::marker::reference::ChainReference;
-use cchain::{core::chain::Chain, marker::bookmark::Bookmark};
+use arguments::*;
+use core::traits::Execution;
+use commons::naming::HumanReadable;
+use {commons::utility::{check_required_packages, handle_adding_bookmarks_logics, read_into_chain}, display_control::{display_form, display_message, Level}, generations::create::ChainCreation};
+use marker::reference::ChainReference;
+use {core::chain::Chain, marker::bookmark::Bookmark};
 use clap::{crate_version, Parser};
 
 fn main() -> Result<(), Error> {
