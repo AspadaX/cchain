@@ -1,6 +1,6 @@
 [package]
 name = "cchain"
-version = "0.3.40"
+version = "0.3.41"
 edition = "2021"
 description = "An AI-native modern cli automation tool built with Rust"
 authors =  ["Xinyu Bao <baoxinyuworks@163.com>"]
