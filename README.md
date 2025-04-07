@@ -79,12 +79,22 @@ cchain run ./cchain_git_commit.json # Using a pre-built workflow to commit chang
 
 ## 📦 Installation
 
-**One-line install** (requires [Rust](https://rustup.rs/)):
+**Cargo**:
+You need to ensure that you have Rust installed on your system. Otherwise, you may need to follow the instructions here to install Rust: https://www.rust-lang.org/learn/get-started
+
+If you are using a Debian system, you will need to have `build-essentials` installed. Below is an example for Ubuntu: 
+```bash
+sudo apt update
+sudo apt install build-essential
+```
+
+Install the tools. 
 ```bash
 cargo install cchain
 ```
 
-**Pre-built binaries** (coming soon! Star the repo for updates!)  
+**Pre-built binaries** 
+You can navigate to the `release` section for downloading the latest binaries available. 
 
 ---
 
