@@ -226,22 +226,26 @@ impl Execution<ProgramExecutionResult> for Program {
                     if self.retry == 0 {
                         return Err(err);
                     }
-                    // Increase attempt counter.
-                    attempts += 1;
-                    let warn_msg: String = format!(
-                        "Retrying {}: {}, attempt: {}",
-                        self.get_execution_type(),
-                        &self,
-                        attempts
-                    );
-                    display_message(Level::Warn, &warn_msg);
-
+                    
                     // Determine if we should break the retry loop.
                     // (retry 0 means no retries; any non-negative value means that many attempts;
                     // -1 means unlimited retries.)
                     if self.retry == 0 || (self.retry != -1 && attempts >= self.retry) {
+                        display_message(Level::Warn, "No more retries!");
                         return Err(err);
                     }
+                    
+                    let warn_msg: String = format!(
+                        "Retrying {}: {}. {} more retry...",
+                        self.get_execution_type(),
+                        &self,
+                        self.retry - attempts
+                    );
+                    display_message(Level::Warn, &warn_msg);
+
+                    // Increase attempt counter.
+                    attempts += 1;
+                    
                     // Otherwise, we loop again.
                 }
             }
