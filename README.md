@@ -79,7 +79,7 @@ cchain run ./cchain_git_commit.json # Using a pre-built workflow to commit chang
 
 ## 📦 Installation
 
-**Cargo**:
+### Cargo
 You need to ensure that you have Rust installed on your system. Otherwise, you may need to follow the instructions here to install Rust: https://www.rust-lang.org/learn/get-started
 
 If you are using a Debian system, you will need to have `build-essentials` installed. Below is an example for Ubuntu: 
@@ -93,7 +93,7 @@ Install the tools.
 cargo install cchain
 ```
 
-**Homebrew**:
+### Homebrew
 You will need to tap `cchain`'s homebrew repo first. 
 ```bash
 brew tap AspadaX/cchain
@@ -103,7 +103,7 @@ Then, you can install the package:
 brew install cchain
 ```
 
-**Pre-built binaries** 
+### Pre-built binaries
 You can navigate to the `release` section for downloading the latest binaries available. 
 
 ---
