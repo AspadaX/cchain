@@ -93,6 +93,16 @@ Install the tools.
 cargo install cchain
 ```
 
+**Homebrew**:
+You will need to tap `cchain`'s homebrew repo first. 
+```bash
+brew tap AspadaX/cchain
+```
+Then, you can install the package:
+```bash
+brew install cchain
+```
+
 **Pre-built binaries** 
 You can navigate to the `release` section for downloading the latest binaries available. 
 
