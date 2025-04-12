@@ -90,6 +90,14 @@ Then, execute it:
 ```bash
 ./setup.sh
 ```
+You may also uninstall `cchain` with [this](./uninstall.sh) script. You should also grant execution priviliges to the script first. 
+```bash
+chmod +x ./uninstall.sh
+```
+Then, execute it:
+```bash
+./uninstall.sh
+```
 
 ### Cargo
 You need to ensure that you have Rust installed on your system. Otherwise, you may need to follow the instructions here to install Rust: https://www.rust-lang.org/learn/get-started
