@@ -78,6 +78,18 @@ cchain run ./cchain_git_commit.json # Using a pre-built workflow to commit chang
 ---
 
 ## 📦 Installation
+Here are a couple of ways to install `cchain`.
+
+### Setup Script
+You may download [this](./setup.sh) shell script to install `cchain`. This is supported on both Linux and macOS platforms. 
+First, you need to grant execution priviliges to the script:
+```bash
+chmod +x ./setup.sh
+```
+Then, execute it:
+```bash
+./setup.sh
+```
 
 ### Cargo
 You need to ensure that you have Rust installed on your system. Otherwise, you may need to follow the instructions here to install Rust: https://www.rust-lang.org/learn/get-started
